@@ -48,7 +48,6 @@ final class StatusBarIconView: NSView {
     
     func showLoading() {
         isLoading = true
-        hasError = false
         needsDisplay = true
     }
     
@@ -157,11 +156,12 @@ final class UsageMenuItemView: NSView {
     private let progressFill: NSView
     private let usageLabel: NSTextField
     private let percentLabel: NSTextField
+    private let costLabel: NSTextField
     
     private var fillWidthConstraint: NSLayoutConstraint?
     
     override var intrinsicContentSize: NSSize {
-        return NSSize(width: 220, height: 50)
+        return NSSize(width: 220, height: 68)
     }
     
     override init(frame frameRect: NSRect) {
@@ -169,6 +169,7 @@ final class UsageMenuItemView: NSView {
         progressFill = NSView()
         usageLabel = NSTextField(labelWithString: "")
         percentLabel = NSTextField(labelWithString: "")
+        costLabel = NSTextField(labelWithString: "")
         
         super.init(frame: frameRect)
         setupViews()
@@ -201,6 +202,12 @@ final class UsageMenuItemView: NSView {
         progressFill.translatesAutoresizingMaskIntoConstraints = false
         progressBar.addSubview(progressFill)
         
+        costLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        costLabel.textColor = .secondaryLabelColor
+        costLabel.alignment = .right
+        costLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(costLabel)
+        
         updateColors()
         
         NSLayoutConstraint.activate([
@@ -215,11 +222,15 @@ final class UsageMenuItemView: NSView {
             progressBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             progressBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             progressBar.heightAnchor.constraint(equalToConstant: 8),
-            progressBar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10),
             
             progressFill.topAnchor.constraint(equalTo: progressBar.topAnchor, constant: 1),
             progressFill.bottomAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: -1),
             progressFill.leadingAnchor.constraint(equalTo: progressBar.leadingAnchor, constant: 1),
+            
+            costLabel.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 6),
+            costLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            costLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 14),
+            costLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
         ])
         
         fillWidthConstraint = progressFill.widthAnchor.constraint(equalToConstant: 0)
@@ -250,11 +261,24 @@ final class UsageMenuItemView: NSView {
         }
     }
     
-    func update(used: Int, limit: Int) {
+    func update(usage: CopilotUsage) {
+        let used = usage.usedRequests
+        let limit = usage.limitRequests
         let percentage = limit > 0 ? min((Double(used) / Double(limit)) * 100, 100) : 0
         
         usageLabel.stringValue = "Used: \(used.formatted()) / \(limit.formatted())"
         percentLabel.stringValue = "\(Int(percentage))%"
+        
+        if usage.netBilledAmount > 0 {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.currencyCode = "USD"
+            let costString = formatter.string(from: NSNumber(value: usage.netBilledAmount)) ?? String(format: "$%.2f", usage.netBilledAmount)
+            costLabel.stringValue = "Add-on Cost: \(costString)"
+            costLabel.textColor = .systemOrange
+        } else {
+            costLabel.stringValue = ""
+        }
         
         let color = Self.colorForPercentage(percentage)
         progressFill.layer?.backgroundColor = color.cgColor
@@ -275,6 +299,7 @@ final class UsageMenuItemView: NSView {
     func showLoading() {
         usageLabel.stringValue = "Loading..."
         percentLabel.stringValue = ""
+        costLabel.stringValue = ""
         progressFill.layer?.backgroundColor = NSColor.tertiaryLabelColor.cgColor
         fillWidthConstraint?.constant = 40
     }
@@ -282,75 +307,10 @@ final class UsageMenuItemView: NSView {
     func showError(_ message: String) {
         usageLabel.stringValue = message
         percentLabel.stringValue = "⚠️"
+        costLabel.stringValue = ""
         percentLabel.textColor = .systemOrange
         progressFill.layer?.backgroundColor = NSColor.systemOrange.cgColor
         fillWidthConstraint?.constant = 0
-    }
-}
-
-struct CopilotUsage: Codable {
-    let table: UsageTable?
-    var limitRequestsValue: Int = 0
-    
-    struct UsageTable: Codable {
-        let rows: [UsageRow]?
-    }
-    
-    struct UsageRow: Codable {
-        let id: String?
-        let cells: [UsageCell]?
-    }
-    
-    struct UsageCell: Codable {
-        let value: String?
-    }
-    
-    enum CodingKeys: String, CodingKey {
-        case table
-    }
-    
-    var usedRequests: Int {
-        guard let rows = table?.rows else { return 0 }
-        return rows.reduce(0) { total, row in
-            guard let cells = row.cells else { return total }
-            
-            let includedStr = cells.indices.contains(1) ? cells[1].value?.replacingOccurrences(of: ",", with: "") ?? "0" : "0"
-            let billedStr = cells.indices.contains(2) ? cells[2].value?.replacingOccurrences(of: ",", with: "") ?? "0" : "0"
-            
-            let included = Double(includedStr) ?? 0
-            let billed = Double(billedStr) ?? 0
-            return total + Int(included + billed)
-        }
-    }
-    
-    var limitRequests: Int { return limitRequestsValue }
-    
-    var usagePercentage: Double {
-        guard limitRequests > 0 else { return 0 }
-        return (Double(usedRequests) / Double(limitRequests)) * 100
-    }
-}
-
-struct CopilotCardResponse: Codable {
-    let userPremiumRequestEntitlement: Int?
-}
-
-struct CachedUsage: Codable {
-    let usage: CopilotUsage
-    let timestamp: Date
-}
-
-enum UsageFetcherError: LocalizedError {
-    case noCustomerId
-    case noUsageData
-    case invalidJSResult
-    
-    var errorDescription: String? {
-        switch self {
-        case .noCustomerId: return "Customer ID를 찾을 수 없습니다"
-        case .noUsageData: return "사용량 데이터를 찾을 수 없습니다"
-        case .invalidJSResult: return "JS 결과가 올바르지 않습니다"
-        }
     }
 }
 
@@ -403,7 +363,7 @@ final class StatusBarController: NSObject {
     private func setupMenu() {
         menu = NSMenu()
         
-        usageView = UsageMenuItemView(frame: NSRect(x: 0, y: 0, width: 220, height: 50))
+        usageView = UsageMenuItemView(frame: NSRect(x: 0, y: 0, width: 220, height: 68))
         usageView.showLoading()
         usageItem = NSMenuItem()
         usageItem.view = usageView
@@ -512,7 +472,6 @@ final class StatusBarController: NSObject {
             let webView = AuthManager.shared.webView
             
             var customerId: String? = nil
-            var fetchSuccess = false
             
             logger.info("fetchUsage: [Step 1] API(/api/v3/user)를 통한 ID 확보 시도")
             let userApiJS = """
@@ -539,8 +498,6 @@ final class StatusBarController: NSObject {
                    let id = json["id"] as? Int {
                     customerId = String(id)
                     logger.info("fetchUsage: API ID 확보 성공 - \(id)")
-                } else {
-                    logger.error("fetchUsage: API ID 확보 실패 (Result: \(String(describing: result)))")
                 }
             } catch {
                 logger.error("fetchUsage: API 호출 중 에러 - \(error.localizedDescription)")
@@ -562,7 +519,7 @@ final class StatusBarController: NSObject {
                     return null;
                 })()
                 """
-                if let extracted: String = try? await evalJSONString(extractionJS, in: webView) {
+                if let extracted = try? await evalJSONString(extractionJS, in: webView) {
                     customerId = extracted
                     logger.info("fetchUsage: DOM에서 customerId 추출 성공 - \(extracted)")
                 }
@@ -593,62 +550,101 @@ final class StatusBarController: NSObject {
             }
             
             if let validCustomerId = customerId {
-                logger.info("fetchUsage: [Step 4] API(copilot_usage_table) 데이터 조회 시도")
-                let fetchJS = """
-                return await (await fetch('/settings/billing/copilot_usage_table?customer_id=\(validCustomerId)&group=7&period=3&query=&page=1', {
-                    headers: {
-                        'accept': 'application/json',
-                        'content-type': 'application/json',
-                        'x-requested-with': 'XMLHttpRequest'
-                    }
-                })).json()
+                let debugPath = "/Users/kargnas/copilot_debug.json"
+                let cardJS = """
+                return await (async function() {
+                    try {
+                        const res = await fetch('/settings/billing/copilot_usage_card?customer_id=\(validCustomerId)&period=3', {
+                            headers: { 'Accept': 'application/json', 'x-requested-with': 'XMLHttpRequest' }
+                        });
+                        const text = await res.text();
+                        try {
+                            const json = JSON.parse(text);
+                            // 디버깅을 위해 응답에 타임스탬프 추가
+                            json._debug_timestamp = new Date().toISOString();
+                            return json;
+                        } catch (e) {
+                            return { error: 'JSON Parse Error', body: text };
+                        }
+                    } catch(e) { return { error: e.toString() }; }
+                })()
                 """
                 
                 do {
-                    var usage: CopilotUsage = try await evalJSON(fetchJS, in: webView)
-                    logger.info("fetchUsage: Table 데이터 조회 성공")
+                    let result = try await webView.callAsyncJavaScript(cardJS, arguments: [:], in: nil, contentWorld: .defaultClient)
                     
-                    logger.info("fetchUsage: [Step 4.5] API(copilot_usage_card) 한도 정보 조회 시도")
-                    let cardJS = """
-                    return await (async function() {
-                        try {
-                            const res = await fetch('/settings/billing/copilot_usage_card?customer_id=\(validCustomerId)&period=3', {
-                                headers: { 'Accept': 'application/json', 'x-requested-with': 'XMLHttpRequest' }
-                            });
-                            return await res.json();
-                        } catch(e) { return null; }
-                    })()
-                    """
-                    
-                    if let cardResult = try? await webView.callAsyncJavaScript(cardJS, arguments: [:], in: nil, contentWorld: .defaultClient) {
-                        if let cardDict = cardResult as? [String: Any] {
-                            if let limit = cardDict["user_premium_request_entitlement"] as? Int {
-                                usage.limitRequestsValue = limit
-                                logger.info("fetchUsage: 한도 정보 확보 성공 (Snake) - \(limit)")
-                            } else if let limit = cardDict["userPremiumRequestEntitlement"] as? Int {
-                                usage.limitRequestsValue = limit
-                                logger.info("fetchUsage: 한도 정보 확보 성공 (Camel) - \(limit)")
-                            }
+                    if let rootDict = result as? [String: Any] {
+                        if let data = try? JSONSerialization.data(withJSONObject: rootDict, options: .prettyPrinted),
+                           let jsonStr = String(data: data, encoding: .utf8) {
+                            try? jsonStr.write(to: URL(fileURLWithPath: debugPath), atomically: true, encoding: .utf8)
                         }
+                        
+                        // 데이터가 payload나 data 안에 있을 수 있으므로 확인
+                        var dict = rootDict
+                        if let payload = rootDict["payload"] as? [String: Any] {
+                            dict = payload
+                        } else if let data = rootDict["data"] as? [String: Any] {
+                            dict = data
+                        }
+                        
+                        logger.info("fetchUsage: 데이터 파싱 시도 (Keys: \(dict.keys.joined(separator: ", ")))")
+                        
+                        let netBilledAmount = (dict["netBilledAmount"] as? Double) 
+                            ?? (dict["net_billed_amount"] as? Double)
+                            ?? (dict["netBilledAmount"] as? Int).map { Double($0) }
+                            ?? 0.0
+                            
+                        let netQuantity = (dict["netQuantity"] as? Double) 
+                            ?? (dict["net_quantity"] as? Double) 
+                            ?? (dict["netQuantity"] as? Int).map { Double($0) }
+                            ?? 0.0
+                            
+                        let discountQuantity = (dict["discountQuantity"] as? Double) 
+                            ?? (dict["discount_quantity"] as? Double) 
+                            ?? (dict["discountQuantity"] as? Int).map { Double($0) }
+                            ?? 0.0
+                        
+                        // 한도(Limit) 파싱 - 여러 키 시도
+                        let limit = (dict["userPremiumRequestEntitlement"] as? Int) 
+                            ?? (dict["user_premium_request_entitlement"] as? Int) 
+                            ?? (dict["userPremiumRequestEntitlement"] as? Double).map { Int($0) }
+                            ?? (dict["user_premium_request_entitlement"] as? Double).map { Int($0) }
+                            ?? (dict["quantity"] as? Int) 
+                            ?? 0
+                            
+                        let filteredLimit = (dict["filteredUserPremiumRequestEntitlement"] as? Int) 
+                            ?? (dict["filteredUserPremiumRequestEntitlement"] as? Double).map { Int($0) }
+                            ?? 0
+                        
+                        let usage = CopilotUsage(
+                            netBilledAmount: netBilledAmount,
+                            netQuantity: netQuantity,
+                            discountQuantity: discountQuantity,
+                            userPremiumRequestEntitlement: limit,
+                            filteredUserPremiumRequestEntitlement: filteredLimit
+                        )
+                        
+                        self.currentUsage = usage
+                        self.lastFetchTime = Date()
+                        self.updateUIForSuccess(usage: usage)
+                        self.saveCache(usage: usage)
+                        self.isFetching = false
+                        logger.info("fetchUsage: 성공")
+                        return
                     }
-                    
-                    self.currentUsage = usage
-                    self.lastFetchTime = Date()
-                    self.updateUIForSuccess(usage: usage)
-                    self.saveCache(usage: usage)
-                    fetchSuccess = true
                 } catch {
-                    logger.error("fetchUsage: API 데이터 조회 실패 - \(error.localizedDescription)")
+                    let errorMsg = "JS Error: \(error.localizedDescription)"
+                    try? errorMsg.write(to: URL(fileURLWithPath: debugPath), atomically: true, encoding: .utf8)
                 }
             }
             
-            if !fetchSuccess {
-                logger.error("fetchUsage: 모든 시도 실패.")
+            if let cached = loadCache() {
+                self.updateUIForSuccess(usage: cached.usage)
+                self.isFetching = false
+            } else {
                 self.handleFetchError(UsageFetcherError.noUsageData)
+                self.isFetching = false
             }
-            
-            self.isFetching = false
-            logger.info("fetchUsage Task 완료")
         }
     }
     
@@ -666,44 +662,9 @@ final class StatusBarController: NSObject {
         }
     }
     
-    private func evalJSON<T: Decodable>(_ js: String, in webView: WKWebView) async throws -> T {
-        logger.info("evalJSON 시작")
-        
-        do {
-            logger.info("evalJSON: callAsyncJavaScript 호출 직전")
-            let result = try await webView.callAsyncJavaScript(js, arguments: [:], in: nil, contentWorld: .defaultClient)
-            
-            let typeName = String(describing: type(of: result))
-            logger.info("evalJSON: callAsyncJavaScript 완료, type=\(typeName, privacy: .public)")
-            
-            if let str = result as? String {
-                NSLog("Raw JSON (String): %@", str)
-                let decoded = try JSONDecoder().decode(T.self, from: Data(str.utf8))
-                logger.info("evalJSON: 파싱 완료 (String)")
-                return decoded
-            } else if let dict = result as? [String: Any] {
-                if let data = try? JSONSerialization.data(withJSONObject: dict),
-                   let str = String(data: data, encoding: .utf8) {
-                    NSLog("Raw JSON (Dict): %@", str)
-                    let decoded = try JSONDecoder().decode(T.self, from: data)
-                    logger.info("evalJSON: 파싱 완료 (Dictionary)")
-                    return decoded
-                }
-            }
-            
-            let resultDesc = String(describing: result)
-            logger.error("evalJSON: result가 유효하지 않음 - result=\(resultDesc, privacy: .public)")
-            throw UsageFetcherError.invalidJSResult
-            
-        } catch {
-            logger.error("evalJSON 실패: \(error.localizedDescription, privacy: .public)")
-            throw error
-        }
-    }
-    
     private func updateUIForSuccess(usage: CopilotUsage) {
         statusBarIconView.update(used: usage.usedRequests, limit: usage.limitRequests)
-        usageView.update(used: usage.usedRequests, limit: usage.limitRequests)
+        usageView.update(usage: usage)
         signInItem.isHidden = true
     }
     
@@ -714,14 +675,8 @@ final class StatusBarController: NSObject {
     }
     
     private func handleFetchError(_ error: Error) {
-        if let cached = loadCache() {
-            statusBarIconView.update(used: cached.usage.usedRequests, limit: cached.usage.limitRequests)
-            usageView.update(used: cached.usage.usedRequests, limit: cached.usage.limitRequests)
-        } else {
-            statusBarIconView.showError()
-            usageView.showError("Update Failed")
-            NSLog("Fetch Error: %@", error.localizedDescription)
-        }
+        statusBarIconView.showError()
+        usageView.showError("Update Failed")
     }
     
     @objc private func signInClicked() {
@@ -760,4 +715,58 @@ final class StatusBarController: NSObject {
         guard let data = UserDefaults.standard.data(forKey: "copilot.usage.cache") else { return nil }
         return try? JSONDecoder().decode(CachedUsage.self, from: data)
     }
+}
+
+enum UsageFetcherError: LocalizedError {
+    case noCustomerId
+    case noUsageData
+    case invalidJSResult
+    case parsingFailed(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .noCustomerId: return "Customer ID를 찾을 수 없습니다"
+        case .noUsageData: return "사용량 데이터를 찾을 수 없습니다"
+        case .invalidJSResult: return "JS 결과가 올바르지 않습니다"
+        case .parsingFailed(let msg): return "파싱 실패: \(msg)"
+        }
+    }
+}
+
+// MARK: - Models (Local Definition to fix scope issues)
+struct CopilotUsage: Codable {
+    let netBilledAmount: Double
+    let netQuantity: Double
+    let discountQuantity: Double
+    let userPremiumRequestEntitlement: Int
+    let filteredUserPremiumRequestEntitlement: Int
+    
+    init(netBilledAmount: Double, netQuantity: Double, discountQuantity: Double, userPremiumRequestEntitlement: Int, filteredUserPremiumRequestEntitlement: Int) {
+        self.netBilledAmount = netBilledAmount
+        self.netQuantity = netQuantity
+        self.discountQuantity = discountQuantity
+        self.userPremiumRequestEntitlement = userPremiumRequestEntitlement
+        self.filteredUserPremiumRequestEntitlement = filteredUserPremiumRequestEntitlement
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        netBilledAmount = (try? container.decodeIfPresent(Double.self, forKey: .netBilledAmount)) ?? 0.0
+        netQuantity = (try? container.decodeIfPresent(Double.self, forKey: .netQuantity)) ?? 0.0
+        discountQuantity = (try? container.decodeIfPresent(Double.self, forKey: .discountQuantity)) ?? 0.0
+        userPremiumRequestEntitlement = (try? container.decodeIfPresent(Int.self, forKey: .userPremiumRequestEntitlement)) ?? 0
+        filteredUserPremiumRequestEntitlement = (try? container.decodeIfPresent(Int.self, forKey: .filteredUserPremiumRequestEntitlement)) ?? 0
+    }
+    
+    var usedRequests: Int { return Int(discountQuantity) }
+    var limitRequests: Int { return userPremiumRequestEntitlement }
+    var usagePercentage: Double {
+        guard limitRequests > 0 else { return 0 }
+        return (Double(usedRequests) / Double(limitRequests)) * 100
+    }
+}
+
+struct CachedUsage: Codable {
+    let usage: CopilotUsage
+    let timestamp: Date
 }
