@@ -181,6 +181,7 @@
 				C11111111111111111111111 /* AuthManager.swift in Sources */,
 				C55555555555555555555555 /* LoginView.swift in Sources */,
 				D11111111111111111111111 /* StatusBarController.swift in Sources */,
+				E11111111111111111111111 /* CopilotUsage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
