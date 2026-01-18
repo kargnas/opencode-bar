@@ -27,6 +27,34 @@ enum RefreshInterval: Int, CaseIterable {
     static var defaultInterval: RefreshInterval { .thirtySeconds }
 }
 
+// MARK: - Prediction Period
+enum PredictionPeriod: Int, CaseIterable {
+    case oneWeek = 7
+    case twoWeeks = 14
+    case threeWeeks = 21
+    
+    var title: String {
+        switch self {
+        case .oneWeek: return "7 days"
+        case .twoWeeks: return "14 days"
+        case .threeWeeks: return "21 days"
+        }
+    }
+    
+    var weights: [Double] {
+        switch self {
+        case .oneWeek:
+            return [1.5, 1.5, 1.2, 1.2, 1.2, 1.0, 1.0]
+        case .twoWeeks:
+            return [1.5, 1.5, 1.4, 1.4, 1.3, 1.3, 1.2, 1.2, 1.1, 1.1, 1.0, 1.0, 1.0, 1.0]
+        case .threeWeeks:
+            return [1.5, 1.5, 1.4, 1.4, 1.3, 1.3, 1.2, 1.2, 1.2, 1.1, 1.1, 1.1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        }
+    }
+    
+    static var defaultPeriod: PredictionPeriod { .oneWeek }
+}
+
 // MARK: - Status Bar Icon View
 final class StatusBarIconView: NSView {
     private var percentage: Double = 0
@@ -385,13 +413,17 @@ final class StatusBarController: NSObject {
     // History UI properties
     private var historySubmenu: NSMenu!
     private var historyMenuItem: NSMenuItem!
-    private let usagePredictor = UsagePredictor()
+    private var predictionPeriodMenu: NSMenu!
+    
+    private var usagePredictor: UsagePredictor {
+        UsagePredictor(weights: predictionPeriod.weights)
+    }
     
     enum HistoryFetchResult {
-        case none           // 아직 fetch 안 함
-        case success        // API 성공
-        case failedWithCache // API 실패, 캐시 사용
-        case failedNoCache   // API 실패, 캐시도 없음
+        case none
+        case success
+        case failedWithCache
+        case failedNoCache
     }
     
     struct HistoryUIState {
@@ -410,6 +442,18 @@ final class StatusBarController: NSObject {
             UserDefaults.standard.set(newValue.rawValue, forKey: "refreshInterval")
             restartRefreshTimer()
             updateRefreshIntervalMenu()
+        }
+    }
+    
+    private var predictionPeriod: PredictionPeriod {
+        get {
+            let rawValue = UserDefaults.standard.integer(forKey: "predictionPeriod")
+            return PredictionPeriod(rawValue: rawValue) ?? .defaultPeriod
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "predictionPeriod")
+            updatePredictionPeriodMenu()
+            updateHistorySubmenu()
         }
     }
     
@@ -445,7 +489,7 @@ final class StatusBarController: NSObject {
         historyMenuItem = NSMenuItem(title: "📊 Usage History", action: nil, keyEquivalent: "")
         historySubmenu = NSMenu()
         historyMenuItem.submenu = historySubmenu
-        let loadingItem = NSMenuItem(title: "로딩 중...", action: nil, keyEquivalent: "")
+        let loadingItem = NSMenuItem(title: "Loading...", action: nil, keyEquivalent: "")
         loadingItem.isEnabled = false
         historySubmenu.addItem(loadingItem)
         menu.addItem(historyMenuItem)
@@ -473,6 +517,15 @@ final class StatusBarController: NSObject {
         menu.addItem(refreshIntervalItem)
         updateRefreshIntervalMenu()
         
+        predictionPeriodMenu = NSMenu()
+        for period in PredictionPeriod.allCases {
+            let item = NSMenuItem(title: period.title, action: #selector(predictionPeriodSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = period.rawValue
+            predictionPeriodMenu.addItem(item)
+        }
+        updatePredictionPeriodMenu()
+        
         let openBillingItem = NSMenuItem(title: "Open Billing", action: #selector(openBillingClicked), keyEquivalent: "b")
         openBillingItem.target = self
         menu.addItem(openBillingItem)
@@ -499,6 +552,18 @@ final class StatusBarController: NSObject {
     @objc private func refreshIntervalSelected(_ sender: NSMenuItem) {
         if let interval = RefreshInterval(rawValue: sender.tag) {
             refreshInterval = interval
+        }
+    }
+    
+    private func updatePredictionPeriodMenu() {
+        for item in predictionPeriodMenu.items {
+            item.state = (item.tag == predictionPeriod.rawValue) ? .on : .off
+        }
+    }
+    
+    @objc private func predictionPeriodSelected(_ sender: NSMenuItem) {
+        if let period = PredictionPeriod(rawValue: sender.tag) {
+            predictionPeriod = period
         }
     }
     
@@ -1051,12 +1116,8 @@ final class StatusBarController: NSObject {
         historySubmenu.removeAllItems()
         
         if state.hasNoData {
-            let item = NSMenuItem(title: "데이터 없음", action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: "📭 No data", action: nil, keyEquivalent: "")
             item.isEnabled = false
-            item.attributedTitle = NSAttributedString(
-                string: "데이터 없음",
-                attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
-            )
             historySubmenu.addItem(item)
             return
         }
@@ -1066,37 +1127,36 @@ final class StatusBarController: NSObject {
             formatter.numberStyle = .decimal
             formatter.maximumFractionDigits = 0
             
-            let monthlyText = "예상 월말: \(formatter.string(from: NSNumber(value: prediction.predictedMonthlyRequests)) ?? "0") requests"
+            let monthlyText = "📈 Predicted EOM: \(formatter.string(from: NSNumber(value: prediction.predictedMonthlyRequests)) ?? "0") requests"
             let monthlyItem = NSMenuItem(title: monthlyText, action: nil, keyEquivalent: "")
             monthlyItem.isEnabled = false
+            monthlyItem.attributedTitle = NSAttributedString(
+                string: monthlyText,
+                attributes: [.font: NSFont.boldSystemFont(ofSize: 13)]
+            )
             historySubmenu.addItem(monthlyItem)
             
             if prediction.predictedBilledAmount > 0 {
-                let costText = String(format: "예상 추가 비용: $%.2f", prediction.predictedBilledAmount)
+                let costText = String(format: "💸 Predicted Add-on: $%.2f", prediction.predictedBilledAmount)
                 let costItem = NSMenuItem(title: costText, action: nil, keyEquivalent: "")
                 costItem.isEnabled = false
                 costItem.attributedTitle = NSAttributedString(
                     string: costText,
-                    attributes: [.foregroundColor: NSColor.systemOrange]
+                    attributes: [
+                        .font: NSFont.boldSystemFont(ofSize: 13),
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
+                    ]
                 )
                 historySubmenu.addItem(costItem)
             }
             
             if prediction.confidenceLevel == .low {
-                let confItem = NSMenuItem(title: "⚠️ 예측 정확도 낮음", action: nil, keyEquivalent: "")
+                let confItem = NSMenuItem(title: "⚠️ Low prediction accuracy", action: nil, keyEquivalent: "")
                 confItem.isEnabled = false
-                confItem.attributedTitle = NSAttributedString(
-                    string: "⚠️ 예측 정확도 낮음",
-                    attributes: [.foregroundColor: NSColor.secondaryLabelColor]
-                )
                 historySubmenu.addItem(confItem)
             } else if prediction.confidenceLevel == .medium {
-                let confItem = NSMenuItem(title: "📊 예측 정확도 보통", action: nil, keyEquivalent: "")
+                let confItem = NSMenuItem(title: "📊 Medium prediction accuracy", action: nil, keyEquivalent: "")
                 confItem.isEnabled = false
-                confItem.attributedTitle = NSAttributedString(
-                    string: "📊 예측 정확도 보통",
-                    attributes: [.foregroundColor: NSColor.secondaryLabelColor]
-                )
                 historySubmenu.addItem(confItem)
             }
             
@@ -1104,12 +1164,8 @@ final class StatusBarController: NSObject {
         }
         
         if state.isStale {
-            let staleItem = NSMenuItem(title: "⏱️ 데이터가 오래됨", action: nil, keyEquivalent: "")
+            let staleItem = NSMenuItem(title: "⏱️ Data is stale", action: nil, keyEquivalent: "")
             staleItem.isEnabled = false
-            staleItem.attributedTitle = NSAttributedString(
-                string: "⏱️ 데이터가 오래됨",
-                attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
-            )
             historySubmenu.addItem(staleItem)
         }
         
@@ -1131,7 +1187,7 @@ final class StatusBarController: NSObject {
                 let isToday = dayStart == today
                 let dateStr = dateFormatter.string(from: day.date)
                 let reqStr = numberFormatter.string(from: NSNumber(value: day.includedRequests)) ?? "0"
-                let label = isToday ? "\(dateStr) (오늘): \(reqStr) req" : "\(dateStr): \(reqStr) req"
+                let label = isToday ? "\(dateStr) (Today): \(reqStr) req" : "\(dateStr): \(reqStr) req"
                 
                 let item = NSMenuItem(title: label, action: nil, keyEquivalent: "")
                 item.isEnabled = false
@@ -1142,5 +1198,10 @@ final class StatusBarController: NSObject {
                 historySubmenu.addItem(item)
             }
         }
+        
+        historySubmenu.addItem(NSMenuItem.separator())
+        let predictionPeriodItem = NSMenuItem(title: "⚙️ Prediction Period", action: nil, keyEquivalent: "")
+        predictionPeriodItem.submenu = predictionPeriodMenu
+        historySubmenu.addItem(predictionPeriodItem)
     }
 }

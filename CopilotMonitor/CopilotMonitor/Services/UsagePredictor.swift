@@ -7,48 +7,51 @@
 
 import Foundation
 
-/// 월말 사용량 예측 결과
+/// Monthly usage prediction result
 struct UsagePrediction {
-    let predictedMonthlyRequests: Double  // 월말 예상 총 요청
-    let predictedBilledAmount: Double     // 예상 추가 비용
+    let predictedMonthlyRequests: Double  // Predicted total requests at EOM
+    let predictedBilledAmount: Double     // Predicted add-on cost
     let confidenceLevel: ConfidenceLevel  // low/medium/high
-    let daysUsedForPrediction: Int        // 예측에 사용된 일수
+    let daysUsedForPrediction: Int        // Days used for prediction
 }
 
-/// 예측 정확도 레벨
+/// Prediction confidence level
 enum ConfidenceLevel: String {
-    case low = "예측 정확도 낮음"
-    case medium = "예측 정확도 보통"
-    case high = "예측 정확도 높음"
+    case low = "Low prediction accuracy"
+    case medium = "Medium prediction accuracy"
+    case high = "High prediction accuracy"
 }
 
-/// 사용량 예측 알고리즘 구현
-/// - 최근 7일 가중치 기반 예측
-/// - 요일별 패턴 고려 (주중/주말 차이)
+/// Usage prediction algorithm implementation
+/// - Weighted prediction based on configurable days
+/// - Considers day-of-week patterns (weekday/weekend differences)
 class UsagePredictor {
-    // UTC 캘린더 사용 (DailyUsage.date가 UTC이므로)
+    // Use UTC calendar (DailyUsage.date is in UTC)
     private let utcCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "UTC")!
         return cal
     }()
     
-    // 가중치 배열: 최신 데이터에 더 높은 가중치 부여
-    // [오늘-1, 오늘-2, 오늘-3, 오늘-4, 오늘-5, 오늘-6, 오늘-7]
-    private let weights: [Double] = [1.5, 1.5, 1.2, 1.2, 1.2, 1.0, 1.0]
+    // Dynamic weights passed from settings
+    private let weights: [Double]
     
-    // 요청당 비용 (고정값)
+    // Cost per request (fixed)
     private let costPerRequest: Double = 0.04  // $0.04/request
+    
+    init(weights: [Double] = [1.5, 1.5, 1.2, 1.2, 1.2, 1.0, 1.0]) {
+        self.weights = weights
+    }
     
     /// 월말 사용량 및 비용 예측
     /// - Parameters:
     ///   - history: 일별 사용량 히스토리
-    ///   - currentUsage: 현재 사용량 정보 (limit 포함)
-    /// - Returns: 예측 결과
+    ///   - currentUsage: Current usage info (includes limit)
+    /// - Returns: Prediction result
     func predict(history: UsageHistory, currentUsage: CopilotUsage) -> UsagePrediction {
         let dailyData = history.days
         
-        // Edge case: 데이터가 없는 경우
+        // Edge case: No data
         guard !dailyData.isEmpty else {
             return UsagePrediction(
                 predictedMonthlyRequests: 0,
@@ -58,14 +61,14 @@ class UsagePredictor {
             )
         }
         
-        // Step 1: 가중 평균 일일 사용량 계산
+        // Step 1: Calculate weighted average daily usage
         let weightedAvgDailyUsage = calculateWeightedAverageDailyUsage(dailyData: dailyData)
         
-        // Step 2: 주중/주말 패턴 보정
+        // Step 2: Weekend/weekday pattern adjustment
         let weekendRatio = calculateWeekendRatio(dailyData: dailyData)
         
-        // Step 3: 남은 일수 계산
-        let today = Date()  // UTC 기준 오늘 날짜
+        // Step 3: Calculate remaining days
+        let today = Date()  // Today in UTC
         let daysInMonth = utcCalendar.range(of: .day, in: .month, for: today)?.count ?? 30
         let currentDay = utcCalendar.component(.day, from: today)
         let remainingDays = daysInMonth - currentDay
@@ -75,14 +78,14 @@ class UsagePredictor {
             remainingDays: remainingDays
         )
         
-        // Step 4: 월말 예상 총 사용량
+        // Step 4: Predict total monthly usage
         let predictedRemainingWeekdayUsage = weightedAvgDailyUsage * Double(remainingWeekdays)
         let predictedRemainingWeekendUsage = weightedAvgDailyUsage * weekendRatio * Double(remainingWeekends)
         
         let currentTotalUsage = history.totalIncludedRequests
         let predictedMonthlyTotal = currentTotalUsage + predictedRemainingWeekdayUsage + predictedRemainingWeekendUsage
         
-        // Step 5: 예상 추가 비용 계산
+        // Step 5: Calculate predicted add-on cost
         let limit = Double(currentUsage.limitRequests)
         let predictedBilledAmount: Double
         
@@ -113,19 +116,19 @@ class UsagePredictor {
         )
     }
     
-    // MARK: - Step 1: 가중 평균 계산
+    // MARK: - Step 1: Weighted Average Calculation
     
-    /// 가중치 기반 평균 일일 사용량 계산
-    /// - Parameter dailyData: 일별 사용량 배열 (최신순 정렬 필요)
-    /// - Returns: 가중 평균 일일 사용량
+    /// Calculate weighted average daily usage
+    /// - Parameter dailyData: Array of daily usage (needs to be sorted by recency)
+    /// - Returns: Weighted average daily usage
     private func calculateWeightedAverageDailyUsage(dailyData: [DailyUsage]) -> Double {
-        // 최신순으로 정렬 (date 내림차순)
+        // Sort by most recent (date descending)
         let sortedData = dailyData.sorted { $0.date > $1.date }
         
         var weightedSum: Double = 0
         var totalWeight: Double = 0
         
-        // 최대 7일까지만 사용 (weights 배열 크기)
+        // Use up to 7 days (weights array size)
         let daysToUse = min(sortedData.count, weights.count)
         
         for i in 0..<daysToUse {
@@ -135,7 +138,7 @@ class UsagePredictor {
             totalWeight += weight
         }
         
-        // 가중치합이 0인 경우 방지
+        // Prevent division by zero
         guard totalWeight > 0 else {
             return 0
         }
@@ -143,11 +146,11 @@ class UsagePredictor {
         return weightedSum / totalWeight
     }
     
-    // MARK: - Step 2: 주중/주말 패턴 보정
+    // MARK: - Step 2: Weekend/Weekday Pattern Adjustment
     
-    /// 주중 대비 주말 사용량 비율 계산
-    /// - Parameter dailyData: 일별 사용량 배열
-    /// - Returns: 주말 비율 (주말평균 / 주중평균)
+    /// Calculate weekend vs weekday usage ratio
+    /// - Parameter dailyData: Array of daily usage
+    /// - Returns: Weekend ratio (weekend avg / weekday avg)
     private func calculateWeekendRatio(dailyData: [DailyUsage]) -> Double {
         var weekdaySum: Double = 0
         var weekendSum: Double = 0
@@ -157,13 +160,13 @@ class UsagePredictor {
         for day in dailyData {
             let weekday = utcCalendar.component(.weekday, from: day.date)
             
-            // weekday: 1=일요일, 2=월요일, ..., 7=토요일
+            // weekday: 1=Sunday, 2=Monday, ..., 7=Saturday
             if weekday == 1 || weekday == 7 {
-                // 주말 (일, 토)
+                // Weekend (Sun, Sat)
                 weekendSum += day.includedRequests
                 weekendCount += 1
             } else {
-                // 주중 (월-금)
+                // Weekday (Mon-Fri)
                 weekdaySum += day.includedRequests
                 weekdayCount += 1
             }
@@ -172,25 +175,25 @@ class UsagePredictor {
         let weekdayAvg = weekdayCount > 0 ? weekdaySum / Double(weekdayCount) : 0
         let weekendAvg = weekendCount > 0 ? weekendSum / Double(weekendCount) : 0
         
-        // Fallback 처리
+        // Fallback handling
         if weekendAvg == 0 && weekdayAvg > 0 {
-            return 0.1  // 주말 데이터 없으면 주중의 10%로 가정
+            return 0.1  // No weekend data, assume 10% of weekday
         }
         
         if weekdayAvg == 0 {
-            return 1.0  // 주중 데이터 없으면 1:1 비율
+            return 1.0  // No weekday data, assume 1:1 ratio
         }
         
         return weekendAvg / weekdayAvg
     }
     
-    // MARK: - Step 3: 남은 일수 계산
+    // MARK: - Step 3: Remaining Days Calculation
     
-    /// 남은 주중/주말 일수 계산
+    /// Count remaining weekdays and weekends
     /// - Parameters:
-    ///   - today: 현재 날짜 (UTC)
-    ///   - remainingDays: 월말까지 남은 총 일수
-    /// - Returns: (남은 주중 일수, 남은 주말 일수)
+    ///   - today: Current date (UTC)
+    ///   - remainingDays: Total days remaining until EOM
+    /// - Returns: (remaining weekdays, remaining weekends)
     private func countRemainingWeekdaysAndWeekends(from today: Date, remainingDays: Int) -> (weekdays: Int, weekends: Int) {
         var weekdays = 0
         var weekends = 0
