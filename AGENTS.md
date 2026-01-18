@@ -1,3 +1,6 @@
+## Language
+- All of comments, commit message, PR should be in English.
+
 ## Requirements
 - Get the data from API only, not from DOM.
 - Get useful session information (cookie, bearer and etc) from DOM/HTML if needed.
