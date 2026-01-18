@@ -1,5 +1,14 @@
 ## Language
 - All of comments, commit message, PR should be in English.
+- **UI Language**: All user-facing text in the app MUST be in English.
+
+## UI Styling Rules
+- **No colors for text emphasis**: Do NOT use `NSColor` attributes like `.foregroundColor` for menu items or labels.
+- **Use instead**:
+  - **Bold**: `NSFont.boldSystemFont(ofSize:)` for important text
+  - **Underline**: `.underlineStyle: NSUnderlineStyle.single.rawValue` for critical warnings
+  - **Emoji**: Use emoji prefixes for visual categorization (e.g., 📈, 💸, ⚠️, 📊, ⏱️, 📭)
+- **Exception**: Progress bars and status indicators can use color (green/yellow/orange/red).
 
 ## Requirements
 - Get the data from API only, not from DOM.

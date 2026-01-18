@@ -4,19 +4,22 @@ import WebKit
 enum UsageFetcherError: LocalizedError {
     case noCustomerId
     case noUsageData
+    case invalidJSResult
     case parsingFailed(String)
     case networkError(Error)
     
     var errorDescription: String? {
         switch self {
         case .noCustomerId:
-            return "Customer ID를 찾을 수 없습니다"
+            return "Customer ID not found"
         case .noUsageData:
-            return "사용량 데이터를 찾을 수 없습니다"
+            return "Usage data not found"
+        case .invalidJSResult:
+            return "Invalid JS result"
         case .parsingFailed(let detail):
-            return "파싱 실패: \(detail)"
+            return "Parsing failed: \(detail)"
         case .networkError(let error):
-            return "네트워크 오류: \(error.localizedDescription)"
+            return "Network error: \(error.localizedDescription)"
         }
     }
 }

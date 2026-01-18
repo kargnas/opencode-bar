@@ -15,6 +15,8 @@
 		C55555555555555555555555 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C66666666666666666666666 /* LoginView.swift */; };
 		D11111111111111111111111 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22222222222222222222222 /* StatusBarController.swift */; };
 		E11111111111111111111111 /* CopilotUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22222222222222222222222 /* CopilotUsage.swift */; };
+		E33333333333333333333334 /* UsageHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44444444444444444444444 /* UsageHistory.swift */; };
+		F11111111111111111111111 /* UsagePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22222222222222222222222 /* UsagePredictor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +31,8 @@
 		D22222222222222222222222 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		A99999999999999999999999 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E22222222222222222222222 /* CopilotUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopilotUsage.swift; sourceTree = "<group>"; };
+		E44444444444444444444444 /* UsageHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageHistory.swift; sourceTree = "<group>"; };
+		F22222222222222222222222 /* UsagePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsagePredictor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +91,7 @@
 			children = (
 				C22222222222222222222222 /* AuthManager.swift */,
 				C44444444444444444444444 /* UsageFetcher.swift */,
+				F22222222222222222222222 /* UsagePredictor.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -103,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				E22222222222222222222222 /* CopilotUsage.swift */,
+				E44444444444444444444444 /* UsageHistory.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -179,8 +185,12 @@
 				A11111111111111111111111 /* CopilotMonitorApp.swift in Sources */,
 				A33333333333333333333333 /* AppDelegate.swift in Sources */,
 				C11111111111111111111111 /* AuthManager.swift in Sources */,
+				C33333333333333333333333 /* UsageFetcher.swift in Sources */,
 				C55555555555555555555555 /* LoginView.swift in Sources */,
 				D11111111111111111111111 /* StatusBarController.swift in Sources */,
+				E11111111111111111111111 /* CopilotUsage.swift in Sources */,
+				E33333333333333333333334 /* UsageHistory.swift in Sources */,
+				F11111111111111111111111 /* UsagePredictor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

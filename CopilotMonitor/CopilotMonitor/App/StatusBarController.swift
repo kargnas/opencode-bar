@@ -27,6 +27,34 @@ enum RefreshInterval: Int, CaseIterable {
     static var defaultInterval: RefreshInterval { .thirtySeconds }
 }
 
+// MARK: - Prediction Period
+enum PredictionPeriod: Int, CaseIterable {
+    case oneWeek = 7
+    case twoWeeks = 14
+    case threeWeeks = 21
+    
+    var title: String {
+        switch self {
+        case .oneWeek: return "7 days"
+        case .twoWeeks: return "14 days"
+        case .threeWeeks: return "21 days"
+        }
+    }
+    
+    var weights: [Double] {
+        switch self {
+        case .oneWeek:
+            return [1.5, 1.5, 1.2, 1.2, 1.2, 1.0, 1.0]
+        case .twoWeeks:
+            return [1.5, 1.5, 1.4, 1.4, 1.3, 1.3, 1.2, 1.2, 1.1, 1.1, 1.0, 1.0, 1.0, 1.0]
+        case .threeWeeks:
+            return [1.5, 1.5, 1.4, 1.4, 1.3, 1.3, 1.2, 1.2, 1.2, 1.1, 1.1, 1.1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        }
+    }
+    
+    static var defaultPeriod: PredictionPeriod { .oneWeek }
+}
+
 // MARK: - Status Bar Icon View
 final class StatusBarIconView: NSView {
     private var percentage: Double = 0
@@ -376,6 +404,35 @@ final class StatusBarController: NSObject {
     private var lastFetchTime: Date?
     private var isFetching = false
     
+    // History fetch properties
+    private var historyFetchTimer: Timer?
+    private var usageHistory: UsageHistory?
+    private var lastHistoryFetchResult: HistoryFetchResult = .none
+    private var customerId: String?
+    
+    // History UI properties
+    private var historySubmenu: NSMenu!
+    private var historyMenuItem: NSMenuItem!
+    private var predictionPeriodMenu: NSMenu!
+    
+    private var usagePredictor: UsagePredictor {
+        UsagePredictor(weights: predictionPeriod.weights)
+    }
+    
+    enum HistoryFetchResult {
+        case none
+        case success
+        case failedWithCache
+        case failedNoCache
+    }
+    
+    struct HistoryUIState {
+        let history: UsageHistory?
+        let prediction: UsagePrediction?
+        let isStale: Bool
+        let hasNoData: Bool
+    }
+    
     private var refreshInterval: RefreshInterval {
         get {
             let rawValue = UserDefaults.standard.integer(forKey: "refreshInterval")
@@ -385,6 +442,18 @@ final class StatusBarController: NSObject {
             UserDefaults.standard.set(newValue.rawValue, forKey: "refreshInterval")
             restartRefreshTimer()
             updateRefreshIntervalMenu()
+        }
+    }
+    
+    private var predictionPeriod: PredictionPeriod {
+        get {
+            let rawValue = UserDefaults.standard.integer(forKey: "predictionPeriod")
+            return PredictionPeriod(rawValue: rawValue) ?? .defaultPeriod
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "predictionPeriod")
+            updatePredictionPeriodMenu()
+            updateHistorySubmenu()
         }
     }
     
@@ -416,6 +485,18 @@ final class StatusBarController: NSObject {
         menu.addItem(usageItem)
         
         menu.addItem(NSMenuItem.separator())
+        
+        historyMenuItem = NSMenuItem(title: "📊 Usage History", action: nil, keyEquivalent: "")
+        historySubmenu = NSMenu()
+        historyMenuItem.submenu = historySubmenu
+        let loadingItem = NSMenuItem(title: "Loading...", action: nil, keyEquivalent: "")
+        loadingItem.isEnabled = false
+        historySubmenu.addItem(loadingItem)
+        menu.addItem(historyMenuItem)
+        
+        // Load cached history immediately on startup (before API fetch completes)
+        loadCachedHistoryOnStartup()
+        
         signInItem = NSMenuItem(title: "Sign In", action: #selector(signInClicked), keyEquivalent: "")
         signInItem.target = self
         menu.addItem(signInItem)
@@ -435,6 +516,15 @@ final class StatusBarController: NSObject {
         refreshIntervalItem.submenu = refreshIntervalMenu
         menu.addItem(refreshIntervalItem)
         updateRefreshIntervalMenu()
+        
+        predictionPeriodMenu = NSMenu()
+        for period in PredictionPeriod.allCases {
+            let item = NSMenuItem(title: period.title, action: #selector(predictionPeriodSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = period.rawValue
+            predictionPeriodMenu.addItem(item)
+        }
+        updatePredictionPeriodMenu()
         
         let openBillingItem = NSMenuItem(title: "Open Billing", action: #selector(openBillingClicked), keyEquivalent: "b")
         openBillingItem.target = self
@@ -465,6 +555,18 @@ final class StatusBarController: NSObject {
         }
     }
     
+    private func updatePredictionPeriodMenu() {
+        for item in predictionPeriodMenu.items {
+            item.state = (item.tag == predictionPeriod.rawValue) ? .on : .off
+        }
+    }
+    
+    @objc private func predictionPeriodSelected(_ sender: NSMenuItem) {
+        if let period = PredictionPeriod(rawValue: sender.tag) {
+            predictionPeriod = period
+        }
+    }
+    
     private func restartRefreshTimer() {
         startRefreshTimer()
     }
@@ -475,6 +577,7 @@ final class StatusBarController: NSObject {
             guard let self = self else { return }
             Task { @MainActor [weak self] in
                 self?.fetchUsage()
+                self?.startHistoryFetchTimer()
             }
         }
         NotificationCenter.default.addObserver(forName: Notification.Name("sessionExpired"), object: nil, queue: .main) { [weak self] _ in
@@ -482,6 +585,8 @@ final class StatusBarController: NSObject {
             guard let self = self else { return }
             Task { @MainActor [weak self] in
                 self?.updateUIForLoggedOut()
+                self?.historyFetchTimer?.invalidate()
+                self?.historyFetchTimer = nil
             }
         }
     }
@@ -530,6 +635,7 @@ final class StatusBarController: NSObject {
         let customerId = await fetchCustomerId(webView: webView)
         
         if let validId = customerId {
+            self.customerId = validId
             let success = await fetchAndProcessUsageData(webView: webView, customerId: validId)
             if success {
                 isFetching = false
@@ -649,8 +755,6 @@ final class StatusBarController: NSObject {
     }
     
     private func fetchAndProcessUsageData(webView: WKWebView, customerId: String) async -> Bool {
-        let debugPath = "/Users/kargnas/copilot_debug.json"
-        
         let cardJS = """
         return await (async function() {
             try {
@@ -676,8 +780,6 @@ final class StatusBarController: NSObject {
                 return false
             }
             
-            saveDebugJSON(rootDict, to: debugPath)
-            
             if let usage = parseUsageFromResponse(rootDict) {
                 currentUsage = usage
                 lastFetchTime = Date()
@@ -687,18 +789,10 @@ final class StatusBarController: NSObject {
                 return true
             }
         } catch {
-            let errorMsg = "JS Error: \(error.localizedDescription)"
-            try? errorMsg.write(to: URL(fileURLWithPath: debugPath), atomically: true, encoding: .utf8)
+            logger.error("fetchUsage: JS 실행 중 에러 - \(error.localizedDescription)")
         }
         
         return false
-    }
-    
-    private func saveDebugJSON(_ dict: [String: Any], to path: String) {
-        if let data = try? JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted),
-           let jsonStr = String(data: data, encoding: .utf8) {
-            try? jsonStr.write(to: URL(fileURLWithPath: path), atomically: true, encoding: .utf8)
-        }
     }
     
     private func parseUsageFromResponse(_ rootDict: [String: Any]) -> CopilotUsage? {
@@ -778,6 +872,7 @@ final class StatusBarController: NSObject {
         statusBarIconView.update(used: usage.usedRequests, limit: usage.limitRequests, cost: usage.netBilledAmount)
         usageView.update(usage: usage)
         signInItem.isHidden = true
+        updateHistorySubmenu()
     }
     
     private func updateUIForLoggedOut() {
@@ -827,58 +922,286 @@ final class StatusBarController: NSObject {
         guard let data = UserDefaults.standard.data(forKey: "copilot.usage.cache") else { return nil }
         return try? JSONDecoder().decode(CachedUsage.self, from: data)
     }
-}
-
-enum UsageFetcherError: LocalizedError {
-    case noCustomerId
-    case noUsageData
-    case invalidJSResult
-    case parsingFailed(String)
     
-    var errorDescription: String? {
-        switch self {
-        case .noCustomerId: return "Customer ID를 찾을 수 없습니다"
-        case .noUsageData: return "사용량 데이터를 찾을 수 없습니다"
-        case .invalidJSResult: return "JS 결과가 올바르지 않습니다"
-        case .parsingFailed(let msg): return "파싱 실패: \(msg)"
+    private func saveHistoryCache(_ history: UsageHistory) {
+        if let data = try? JSONEncoder().encode(history) {
+            UserDefaults.standard.set(data, forKey: "copilot.history.cache")
         }
     }
-}
-
-// MARK: - Models (Local Definition to fix scope issues)
-struct CopilotUsage: Codable {
-    let netBilledAmount: Double
-    let netQuantity: Double
-    let discountQuantity: Double
-    let userPremiumRequestEntitlement: Int
-    let filteredUserPremiumRequestEntitlement: Int
     
-    init(netBilledAmount: Double, netQuantity: Double, discountQuantity: Double, userPremiumRequestEntitlement: Int, filteredUserPremiumRequestEntitlement: Int) {
-        self.netBilledAmount = netBilledAmount
-        self.netQuantity = netQuantity
-        self.discountQuantity = discountQuantity
-        self.userPremiumRequestEntitlement = userPremiumRequestEntitlement
-        self.filteredUserPremiumRequestEntitlement = filteredUserPremiumRequestEntitlement
+    private func loadHistoryCache() -> UsageHistory? {
+        guard let data = UserDefaults.standard.data(forKey: "copilot.history.cache") else { return nil }
+        return try? JSONDecoder().decode(UsageHistory.self, from: data)
     }
     
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        netBilledAmount = (try? container.decodeIfPresent(Double.self, forKey: .netBilledAmount)) ?? 0.0
-        netQuantity = (try? container.decodeIfPresent(Double.self, forKey: .netQuantity)) ?? 0.0
-        discountQuantity = (try? container.decodeIfPresent(Double.self, forKey: .discountQuantity)) ?? 0.0
-        userPremiumRequestEntitlement = (try? container.decodeIfPresent(Int.self, forKey: .userPremiumRequestEntitlement)) ?? 0
-        filteredUserPremiumRequestEntitlement = (try? container.decodeIfPresent(Int.self, forKey: .filteredUserPremiumRequestEntitlement)) ?? 0
+    private func hasMonthChanged(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+        return calendar.component(.month, from: date) != calendar.component(.month, from: Date())
+            || calendar.component(.year, from: date) != calendar.component(.year, from: Date())
     }
     
-    var usedRequests: Int { return Int(discountQuantity) }
-    var limitRequests: Int { return userPremiumRequestEntitlement }
-    var usagePercentage: Double {
-        guard limitRequests > 0 else { return 0 }
-        return (Double(usedRequests) / Double(limitRequests)) * 100
+    private func loadCachedHistoryOnStartup() {
+        guard let cached = loadHistoryCache() else {
+            logger.info("캐시 없음 - 히스토리 로드 스킵")
+            return
+        }
+        
+        if hasMonthChanged(cached.fetchedAt) {
+            logger.info("월 변경 감지 - 캐시 삭제")
+            UserDefaults.standard.removeObject(forKey: "copilot.history.cache")
+            return
+        }
+        
+        self.usageHistory = cached
+        self.lastHistoryFetchResult = .failedWithCache
+        updateHistorySubmenu()
     }
-}
-
-struct CachedUsage: Codable {
-    let usage: CopilotUsage
-    let timestamp: Date
+    
+    private func fetchUsageHistoryNow() {
+        guard let customerId = self.customerId else {
+            logger.warning("fetchUsageHistoryNow: customerId가 nil, 스킵")
+            return
+        }
+        
+        logger.info("fetchUsageHistoryNow: 시작, customerId=\(customerId)")
+        
+        let webView = AuthManager.shared.webView
+        
+        Task { @MainActor in
+            let js = """
+            return await (async function() {
+                try {
+                    const res = await fetch('/settings/billing/copilot_usage_table?customer_id=\(customerId)&group=0&period=3&query=&page=1', {
+                        headers: { 'Accept': 'application/json', 'x-requested-with': 'XMLHttpRequest' }
+                    });
+                    return await res.json();
+                } catch(e) { return { error: e.toString() }; }
+            })()
+            """
+            
+            do {
+                let result = try await webView.callAsyncJavaScript(js, arguments: [:], in: nil, contentWorld: .defaultClient)
+                
+                guard let rootDict = result as? [String: Any] else {
+                    logger.error("fetchUsageHistoryNow: 실패 - 결과가 dictionary가 아님")
+                    self.lastHistoryFetchResult = self.usageHistory != nil ? .failedWithCache : .failedNoCache
+                    return
+                }
+                
+                if let error = rootDict["error"] as? String {
+                    logger.error("fetchUsageHistoryNow: 실패 - JS 에러: \(error)")
+                    self.lastHistoryFetchResult = self.usageHistory != nil ? .failedWithCache : .failedNoCache
+                    return
+                }
+                
+                guard let table = rootDict["table"] as? [String: Any],
+                      let rows = table["rows"] as? [[String: Any]] else {
+                    logger.error("fetchUsageHistoryNow: 실패 - table/rows 파싱 실패")
+                    self.lastHistoryFetchResult = self.usageHistory != nil ? .failedWithCache : .failedNoCache
+                    return
+                }
+                
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z 'utc'"
+                dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+                dateFormatter.timeZone = TimeZone(identifier: "UTC")
+                
+                var dailyUsages: [DailyUsage] = []
+                
+                for row in rows {
+                    guard let cells = row["cells"] as? [[String: Any]],
+                          cells.count >= 5 else {
+                        continue
+                    }
+                    
+                    guard let dateStr = cells[0]["sortValue"] as? String,
+                          let date = dateFormatter.date(from: dateStr) else {
+                        continue
+                    }
+                    
+                    let includedRequests = parseDoubleFromCell(cells[1]["value"])
+                    let billedRequests = parseDoubleFromCell(cells[2]["value"])
+                    let grossAmount = parseCurrencyFromCell(cells[3]["value"])
+                    let billedAmount = parseCurrencyFromCell(cells[4]["value"])
+                    
+                    dailyUsages.append(DailyUsage(
+                        date: date,
+                        includedRequests: includedRequests,
+                        billedRequests: billedRequests,
+                        grossAmount: grossAmount,
+                        billedAmount: billedAmount
+                    ))
+                }
+                
+                dailyUsages.sort { $0.date > $1.date }
+                
+                let history = UsageHistory(fetchedAt: Date(), days: dailyUsages)
+                self.usageHistory = history
+                self.lastHistoryFetchResult = .success
+                self.saveHistoryCache(history)
+                
+                logger.info("fetchUsageHistoryNow: 완료, days.count=\(history.days.count), totalRequests=\(history.totalIncludedRequests)")
+                self.updateHistorySubmenu()
+            } catch {
+                logger.error("fetchUsageHistoryNow: 실패 - \(error.localizedDescription)")
+                self.handleHistoryFetchFailure()
+                self.updateHistorySubmenu()
+            }
+        }
+    }
+    
+    private func parseDoubleFromCell(_ value: Any?) -> Double {
+        guard let str = value as? String else { return 0 }
+        let cleaned = str.replacingOccurrences(of: ",", with: "")
+        return Double(cleaned) ?? 0
+    }
+    
+    private func parseCurrencyFromCell(_ value: Any?) -> Double {
+        guard let str = value as? String else { return 0 }
+        let cleaned = str.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: "")
+        return Double(cleaned) ?? 0
+    }
+    
+    private func handleHistoryFetchFailure() {
+        if let cached = loadHistoryCache() {
+            if hasMonthChanged(cached.fetchedAt) {
+                UserDefaults.standard.removeObject(forKey: "copilot.history.cache")
+                self.usageHistory = nil
+                self.lastHistoryFetchResult = .failedNoCache
+            } else {
+                self.usageHistory = cached
+                self.lastHistoryFetchResult = .failedWithCache
+            }
+        } else {
+            self.usageHistory = nil
+            self.lastHistoryFetchResult = .failedNoCache
+        }
+    }
+    
+    private func startHistoryFetchTimer() {
+        historyFetchTimer?.invalidate()
+        fetchUsageHistoryNow()
+        historyFetchTimer = Timer.scheduledTimer(withTimeInterval: 5 * 60, repeats: true) { [weak self] _ in
+            self?.fetchUsageHistoryNow()
+        }
+    }
+    
+    private func getHistoryUIState() -> HistoryUIState {
+        guard let history = usageHistory else {
+            return HistoryUIState(history: nil, prediction: nil, isStale: false, hasNoData: true)
+        }
+        
+        let stale = isHistoryStale(history)
+        
+        var prediction: UsagePrediction? = nil
+        if let currentUsage = self.currentUsage {
+            prediction = usagePredictor.predict(history: history, currentUsage: currentUsage)
+        }
+        
+        return HistoryUIState(
+            history: history,
+            prediction: prediction,
+            isStale: stale && lastHistoryFetchResult == .failedWithCache,
+            hasNoData: false
+        )
+    }
+    
+    private func isHistoryStale(_ history: UsageHistory) -> Bool {
+        let staleThreshold: TimeInterval = 30 * 60
+        return Date().timeIntervalSince(history.fetchedAt) > staleThreshold
+    }
+    
+    private func updateHistorySubmenu() {
+        let state = getHistoryUIState()
+        historySubmenu.removeAllItems()
+        
+        if state.hasNoData {
+            let item = NSMenuItem(title: "📭 No data", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            historySubmenu.addItem(item)
+            return
+        }
+        
+        if let prediction = state.prediction {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.maximumFractionDigits = 0
+            
+            let monthlyText = "📈 Predicted EOM: \(formatter.string(from: NSNumber(value: prediction.predictedMonthlyRequests)) ?? "0") requests"
+            let monthlyItem = NSMenuItem(title: monthlyText, action: nil, keyEquivalent: "")
+            monthlyItem.isEnabled = false
+            monthlyItem.attributedTitle = NSAttributedString(
+                string: monthlyText,
+                attributes: [.font: NSFont.boldSystemFont(ofSize: 13)]
+            )
+            historySubmenu.addItem(monthlyItem)
+            
+            if prediction.predictedBilledAmount > 0 {
+                let costText = String(format: "💸 Predicted Add-on: $%.2f", prediction.predictedBilledAmount)
+                let costItem = NSMenuItem(title: costText, action: nil, keyEquivalent: "")
+                costItem.isEnabled = false
+                costItem.attributedTitle = NSAttributedString(
+                    string: costText,
+                    attributes: [
+                        .font: NSFont.boldSystemFont(ofSize: 13),
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
+                    ]
+                )
+                historySubmenu.addItem(costItem)
+            }
+            
+            if prediction.confidenceLevel == .low {
+                let confItem = NSMenuItem(title: "⚠️ Low prediction accuracy", action: nil, keyEquivalent: "")
+                confItem.isEnabled = false
+                historySubmenu.addItem(confItem)
+            } else if prediction.confidenceLevel == .medium {
+                let confItem = NSMenuItem(title: "📊 Medium prediction accuracy", action: nil, keyEquivalent: "")
+                confItem.isEnabled = false
+                historySubmenu.addItem(confItem)
+            }
+            
+            historySubmenu.addItem(NSMenuItem.separator())
+        }
+        
+        if state.isStale {
+            let staleItem = NSMenuItem(title: "⏱️ Data is stale", action: nil, keyEquivalent: "")
+            staleItem.isEnabled = false
+            historySubmenu.addItem(staleItem)
+        }
+        
+        if let history = state.history {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "MMM d"
+            dateFormatter.timeZone = TimeZone(identifier: "UTC")
+            
+            var utcCalendar = Calendar(identifier: .gregorian)
+            utcCalendar.timeZone = TimeZone(identifier: "UTC")!
+            let today = utcCalendar.startOfDay(for: Date())
+            
+            let numberFormatter = NumberFormatter()
+            numberFormatter.numberStyle = .decimal
+            numberFormatter.maximumFractionDigits = 0
+            
+            for day in history.recentDays {
+                let dayStart = utcCalendar.startOfDay(for: day.date)
+                let isToday = dayStart == today
+                let dateStr = dateFormatter.string(from: day.date)
+                let reqStr = numberFormatter.string(from: NSNumber(value: day.includedRequests)) ?? "0"
+                let label = isToday ? "\(dateStr) (Today): \(reqStr) req" : "\(dateStr): \(reqStr) req"
+                
+                let item = NSMenuItem(title: label, action: nil, keyEquivalent: "")
+                item.isEnabled = false
+                item.attributedTitle = NSAttributedString(
+                    string: label,
+                    attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)]
+                )
+                historySubmenu.addItem(item)
+            }
+        }
+        
+        historySubmenu.addItem(NSMenuItem.separator())
+        let predictionPeriodItem = NSMenuItem(title: "⚙️ Prediction Period", action: nil, keyEquivalent: "")
+        predictionPeriodItem.submenu = predictionPeriodMenu
+        historySubmenu.addItem(predictionPeriodItem)
+    }
 }
