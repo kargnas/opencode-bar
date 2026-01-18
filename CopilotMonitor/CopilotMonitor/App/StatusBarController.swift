@@ -474,182 +474,244 @@ final class StatusBarController: NSObject {
         usageView.showLoading()
         
         Task {
-            let webView = AuthManager.shared.webView
+            await performFetchUsage()
+        }
+    }
+    
+    // MARK: - Fetch Usage Helpers (Split for Swift compiler type-check performance on older Xcode)
+    
+    private func performFetchUsage() async {
+        let webView = AuthManager.shared.webView
+        let customerId = await fetchCustomerId(webView: webView)
+        
+        if let validId = customerId {
+            let success = await fetchAndProcessUsageData(webView: webView, customerId: validId)
+            if success {
+                isFetching = false
+                return
+            }
+        }
+        
+        handleFetchFallback()
+    }
+    
+    private func fetchCustomerId(webView: WKWebView) async -> String? {
+        if let apiId = await fetchCustomerIdFromAPI(webView: webView) {
+            return apiId
+        }
+        if let domId = await fetchCustomerIdFromDOM(webView: webView) {
+            return domId
+        }
+        if let htmlId = await fetchCustomerIdFromHTML(webView: webView) {
+            return htmlId
+        }
+        return nil
+    }
+    
+    private func fetchCustomerIdFromAPI(webView: WKWebView) async -> String? {
+        logger.info("fetchUsage: [Step 1] API(/api/v3/user)를 통한 ID 확보 시도")
+        
+        let userApiJS = """
+        return await (async function() {
+            try {
+                const response = await fetch('/api/v3/user', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) return JSON.stringify({ error: 'HTTP ' + response.status });
+                const data = await response.json();
+                return JSON.stringify(data);
+            } catch (e) {
+                return JSON.stringify({ error: e.toString() });
+            }
+        })()
+        """
+        
+        do {
+            let result = try await webView.callAsyncJavaScript(userApiJS, arguments: [:], in: nil, contentWorld: .defaultClient)
             
-            var customerId: String? = nil
-            
-            logger.info("fetchUsage: [Step 1] API(/api/v3/user)를 통한 ID 확보 시도")
-            let userApiJS = """
-            return await (async function() {
+            if let jsonString = result as? String,
+               let data = jsonString.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let id = json["id"] as? Int {
+                logger.info("fetchUsage: API ID 확보 성공 - \(id)")
+                return String(id)
+            }
+        } catch {
+            logger.error("fetchUsage: API 호출 중 에러 - \(error.localizedDescription)")
+        }
+        
+        return nil
+    }
+    
+    private func fetchCustomerIdFromDOM(webView: WKWebView) async -> String? {
+        logger.info("fetchUsage: [Step 2] DOM 추출 시도")
+        
+        let extractionJS = """
+        return (function() {
+            const el = document.querySelector('script[data-target="react-app.embeddedData"]');
+            if (el) {
                 try {
-                    const response = await fetch('/api/v3/user', {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    if (!response.ok) return JSON.stringify({ error: 'HTTP ' + response.status });
-                    const data = await response.json();
-                    return JSON.stringify(data);
+                    const data = JSON.parse(el.textContent);
+                    if (data && data.payload && data.payload.customer && data.payload.customer.customerId) {
+                        return data.payload.customer.customerId.toString();
+                    }
+                } catch(e) {}
+            }
+            return null;
+        })()
+        """
+        
+        if let extracted = try? await evalJSONString(extractionJS, in: webView) {
+            logger.info("fetchUsage: DOM에서 customerId 추출 성공 - \(extracted)")
+            return extracted
+        }
+        
+        return nil
+    }
+    
+    private func fetchCustomerIdFromHTML(webView: WKWebView) async -> String? {
+        logger.info("fetchUsage: [Step 3] HTML Regex 시도")
+        
+        let htmlJS = "return document.documentElement.outerHTML"
+        guard let html = try? await webView.callAsyncJavaScript(htmlJS, arguments: [:], in: nil, contentWorld: .defaultClient) as? String else {
+            return nil
+        }
+        
+        let patterns = [
+            #"customerId":(\d+)"#,
+            #"customerId&quot;:(\d+)"#,
+            #"customer_id=(\d+)"#,
+            #"data-customer-id="(\d+)""#
+        ]
+        
+        for pattern in patterns {
+            if let customerId = extractCustomerIdWithPattern(pattern, from: html) {
+                logger.info("fetchUsage: HTML에서 ID 발견 - \(customerId)")
+                return customerId
+            }
+        }
+        
+        return nil
+    }
+    
+    private func extractCustomerIdWithPattern(_ pattern: String, from html: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              let range = Range(match.range(at: 1), in: html) else {
+            return nil
+        }
+        return String(html[range])
+    }
+    
+    private func fetchAndProcessUsageData(webView: WKWebView, customerId: String) async -> Bool {
+        let debugPath = "/Users/kargnas/copilot_debug.json"
+        
+        let cardJS = """
+        return await (async function() {
+            try {
+                const res = await fetch('/settings/billing/copilot_usage_card?customer_id=\(customerId)&period=3', {
+                    headers: { 'Accept': 'application/json', 'x-requested-with': 'XMLHttpRequest' }
+                });
+                const text = await res.text();
+                try {
+                    const json = JSON.parse(text);
+                    json._debug_timestamp = new Date().toISOString();
+                    return json;
                 } catch (e) {
-                    return JSON.stringify({ error: e.toString() });
+                    return { error: 'JSON Parse Error', body: text };
                 }
-            })()
-            """
+            } catch(e) { return { error: e.toString() }; }
+        })()
+        """
+        
+        do {
+            let result = try await webView.callAsyncJavaScript(cardJS, arguments: [:], in: nil, contentWorld: .defaultClient)
             
-            do {
-                let result = try await webView.callAsyncJavaScript(userApiJS, arguments: [:], in: nil, contentWorld: .defaultClient)
-                
-                if let jsonString = result as? String,
-                   let data = jsonString.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let id = json["id"] as? Int {
-                    customerId = String(id)
-                    logger.info("fetchUsage: API ID 확보 성공 - \(id)")
-                }
-            } catch {
-                logger.error("fetchUsage: API 호출 중 에러 - \(error.localizedDescription)")
+            guard let rootDict = result as? [String: Any] else {
+                return false
             }
             
-            if customerId == nil {
-                logger.info("fetchUsage: [Step 2] DOM 추출 시도")
-                let extractionJS = """
-                return (function() {
-                    const el = document.querySelector('script[data-target="react-app.embeddedData"]');
-                    if (el) {
-                        try {
-                            const data = JSON.parse(el.textContent);
-                            if (data && data.payload && data.payload.customer && data.payload.customer.customerId) {
-                                return data.payload.customer.customerId.toString();
-                            }
-                        } catch(e) {}
-                    }
-                    return null;
-                })()
-                """
-                if let extracted = try? await evalJSONString(extractionJS, in: webView) {
-                    customerId = extracted
-                    logger.info("fetchUsage: DOM에서 customerId 추출 성공 - \(extracted)")
-                }
-            }
+            saveDebugJSON(rootDict, to: debugPath)
             
-            if customerId == nil {
-                logger.info("fetchUsage: [Step 3] HTML Regex 시도")
-                do {
-                    let htmlJS = "return document.documentElement.outerHTML"
-                    if let html = try? await webView.callAsyncJavaScript(htmlJS, arguments: [:], in: nil, contentWorld: .defaultClient) as? String {
-                        let patterns = [
-                            #"customerId":(\d+)"#,
-                            #"customerId&quot;:(\d+)"#,
-                            #"customer_id=(\d+)"#,
-                            #"data-customer-id="(\d+)""#
-                        ]
-                        for pattern in patterns {
-                            if let regex = try? NSRegularExpression(pattern: pattern),
-                               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-                               let range = Range(match.range(at: 1), in: html) {
-                                customerId = String(html[range])
-                                logger.info("fetchUsage: HTML에서 ID 발견 - \(customerId!)")
-                                break
-                            }
-                        }
-                    }
-                }
+            if let usage = parseUsageFromResponse(rootDict) {
+                currentUsage = usage
+                lastFetchTime = Date()
+                updateUIForSuccess(usage: usage)
+                saveCache(usage: usage)
+                logger.info("fetchUsage: 성공")
+                return true
             }
-            
-            if let validCustomerId = customerId {
-                let debugPath = "/Users/kargnas/copilot_debug.json"
-                let cardJS = """
-                return await (async function() {
-                    try {
-                        const res = await fetch('/settings/billing/copilot_usage_card?customer_id=\(validCustomerId)&period=3', {
-                            headers: { 'Accept': 'application/json', 'x-requested-with': 'XMLHttpRequest' }
-                        });
-                        const text = await res.text();
-                        try {
-                            const json = JSON.parse(text);
-                            // 디버깅을 위해 응답에 타임스탬프 추가
-                            json._debug_timestamp = new Date().toISOString();
-                            return json;
-                        } catch (e) {
-                            return { error: 'JSON Parse Error', body: text };
-                        }
-                    } catch(e) { return { error: e.toString() }; }
-                })()
-                """
-                
-                do {
-                    let result = try await webView.callAsyncJavaScript(cardJS, arguments: [:], in: nil, contentWorld: .defaultClient)
-                    
-                    if let rootDict = result as? [String: Any] {
-                        if let data = try? JSONSerialization.data(withJSONObject: rootDict, options: .prettyPrinted),
-                           let jsonStr = String(data: data, encoding: .utf8) {
-                            try? jsonStr.write(to: URL(fileURLWithPath: debugPath), atomically: true, encoding: .utf8)
-                        }
-                        
-                        // 데이터가 payload나 data 안에 있을 수 있으므로 확인
-                        var dict = rootDict
-                        if let payload = rootDict["payload"] as? [String: Any] {
-                            dict = payload
-                        } else if let data = rootDict["data"] as? [String: Any] {
-                            dict = data
-                        }
-                        
-                        logger.info("fetchUsage: 데이터 파싱 시도 (Keys: \(dict.keys.joined(separator: ", ")))")
-                        
-                        let netBilledAmount = (dict["netBilledAmount"] as? Double) 
-                            ?? (dict["net_billed_amount"] as? Double)
-                            ?? (dict["netBilledAmount"] as? Int).map { Double($0) }
-                            ?? 0.0
-                            
-                        let netQuantity = (dict["netQuantity"] as? Double) 
-                            ?? (dict["net_quantity"] as? Double) 
-                            ?? (dict["netQuantity"] as? Int).map { Double($0) }
-                            ?? 0.0
-                            
-                        let discountQuantity = (dict["discountQuantity"] as? Double) 
-                            ?? (dict["discount_quantity"] as? Double) 
-                            ?? (dict["discountQuantity"] as? Int).map { Double($0) }
-                            ?? 0.0
-                        
-                        // 한도(Limit) 파싱 - 여러 키 시도
-                        let limit = (dict["userPremiumRequestEntitlement"] as? Int) 
-                            ?? (dict["user_premium_request_entitlement"] as? Int) 
-                            ?? (dict["userPremiumRequestEntitlement"] as? Double).map { Int($0) }
-                            ?? (dict["user_premium_request_entitlement"] as? Double).map { Int($0) }
-                            ?? (dict["quantity"] as? Int) 
-                            ?? 0
-                            
-                        let filteredLimit = (dict["filteredUserPremiumRequestEntitlement"] as? Int) 
-                            ?? (dict["filteredUserPremiumRequestEntitlement"] as? Double).map { Int($0) }
-                            ?? 0
-                        
-                        let usage = CopilotUsage(
-                            netBilledAmount: netBilledAmount,
-                            netQuantity: netQuantity,
-                            discountQuantity: discountQuantity,
-                            userPremiumRequestEntitlement: limit,
-                            filteredUserPremiumRequestEntitlement: filteredLimit
-                        )
-                        
-                        self.currentUsage = usage
-                        self.lastFetchTime = Date()
-                        self.updateUIForSuccess(usage: usage)
-                        self.saveCache(usage: usage)
-                        self.isFetching = false
-                        logger.info("fetchUsage: 성공")
-                        return
-                    }
-                } catch {
-                    let errorMsg = "JS Error: \(error.localizedDescription)"
-                    try? errorMsg.write(to: URL(fileURLWithPath: debugPath), atomically: true, encoding: .utf8)
-                }
+        } catch {
+            let errorMsg = "JS Error: \(error.localizedDescription)"
+            try? errorMsg.write(to: URL(fileURLWithPath: debugPath), atomically: true, encoding: .utf8)
+        }
+        
+        return false
+    }
+    
+    private func saveDebugJSON(_ dict: [String: Any], to path: String) {
+        if let data = try? JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted),
+           let jsonStr = String(data: data, encoding: .utf8) {
+            try? jsonStr.write(to: URL(fileURLWithPath: path), atomically: true, encoding: .utf8)
+        }
+    }
+    
+    private func parseUsageFromResponse(_ rootDict: [String: Any]) -> CopilotUsage? {
+        var dict = rootDict
+        if let payload = rootDict["payload"] as? [String: Any] {
+            dict = payload
+        } else if let data = rootDict["data"] as? [String: Any] {
+            dict = data
+        }
+        
+        logger.info("fetchUsage: 데이터 파싱 시도 (Keys: \(dict.keys.joined(separator: ", ")))")
+        
+        let netBilledAmount = parseDoubleValue(from: dict, keys: ["netBilledAmount", "net_billed_amount"])
+        let netQuantity = parseDoubleValue(from: dict, keys: ["netQuantity", "net_quantity"])
+        let discountQuantity = parseDoubleValue(from: dict, keys: ["discountQuantity", "discount_quantity"])
+        let limit = parseIntValue(from: dict, keys: ["userPremiumRequestEntitlement", "user_premium_request_entitlement", "quantity"])
+        let filteredLimit = parseIntValue(from: dict, keys: ["filteredUserPremiumRequestEntitlement"])
+        
+        return CopilotUsage(
+            netBilledAmount: netBilledAmount,
+            netQuantity: netQuantity,
+            discountQuantity: discountQuantity,
+            userPremiumRequestEntitlement: limit,
+            filteredUserPremiumRequestEntitlement: filteredLimit
+        )
+    }
+    
+    private func parseDoubleValue(from dict: [String: Any], keys: [String]) -> Double {
+        for key in keys {
+            if let value = dict[key] as? Double {
+                return value
             }
-            
-            if let cached = loadCache() {
-                self.updateUIForSuccess(usage: cached.usage)
-                self.isFetching = false
-            } else {
-                self.handleFetchError(UsageFetcherError.noUsageData)
-                self.isFetching = false
+            if let value = dict[key] as? Int {
+                return Double(value)
             }
+        }
+        return 0.0
+    }
+    
+    private func parseIntValue(from dict: [String: Any], keys: [String]) -> Int {
+        for key in keys {
+            if let value = dict[key] as? Int {
+                return value
+            }
+            if let value = dict[key] as? Double {
+                return Int(value)
+            }
+        }
+        return 0
+    }
+    
+    private func handleFetchFallback() {
+        if let cached = loadCache() {
+            updateUIForSuccess(usage: cached.usage)
+            isFetching = false
+        } else {
+            handleFetchError(UsageFetcherError.noUsageData)
+            isFetching = false
         }
     }
     
