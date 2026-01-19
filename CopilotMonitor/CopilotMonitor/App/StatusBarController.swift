@@ -505,6 +505,10 @@ final class StatusBarController: NSObject {
         refreshItem.target = self
         menu.addItem(refreshItem)
         
+        let checkForUpdatesItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdatesClicked), keyEquivalent: "u")
+        checkForUpdatesItem.target = self
+        menu.addItem(checkForUpdatesItem)
+        
         let refreshIntervalItem = NSMenuItem(title: "Auto Refresh", action: nil, keyEquivalent: "")
         refreshIntervalMenu = NSMenu()
         for interval in RefreshInterval.allCases {
@@ -892,6 +896,11 @@ final class StatusBarController: NSObject {
     
     @objc private func refreshClicked() {
         triggerRefresh()
+    }
+    
+    @objc private func checkForUpdatesClicked() {
+        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+        appDelegate.updaterController.checkForUpdates(nil)
     }
     
     @objc private func openBillingClicked() {

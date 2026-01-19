@@ -17,6 +17,7 @@
 		E11111111111111111111111 /* CopilotUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22222222222222222222222 /* CopilotUsage.swift */; };
 		E33333333333333333333334 /* UsageHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44444444444444444444444 /* UsageHistory.swift */; };
 		F11111111111111111111111 /* UsagePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22222222222222222222222 /* UsagePredictor.swift */; };
+		SP1111111111111111111111 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = SP2222222222222222222222 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				SP1111111111111111111111 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -51,6 +53,7 @@
 			children = (
 				ACCCCCCCCCCCCCCCCCCCCCCC /* CopilotMonitor */,
 				ADDDDDDDDDDDDDDDDDDDDDDD /* Products */,
+				SP3333333333333333333333 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -60,6 +63,13 @@
 				A77777777777777777777777 /* CopilotMonitor.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		SP3333333333333333333333 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		ACCCCCCCCCCCCCCCCCCCCCCC /* CopilotMonitor */ = {
@@ -129,6 +139,9 @@
 			dependencies = (
 			);
 			name = CopilotMonitor;
+			packageProductDependencies = (
+				SP2222222222222222222222 /* Sparkle */,
+			);
 			productName = CopilotMonitor;
 			productReference = A77777777777777777777777 /* CopilotMonitor.app */;
 			productType = "com.apple.product-type.application";
@@ -157,6 +170,9 @@
 				Base,
 			);
 			mainGroup = ABBBBBBBBBBBBBBBBBBBBBBB;
+			packageReferences = (
+				SP4444444444444444444444 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = ADDDDDDDDDDDDDDDDDDDDDDD /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -385,6 +401,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		SP4444444444444444444444 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		SP2222222222222222222222 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = SP4444444444444444444444 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B44444444444444444444444 /* Project object */;
 }

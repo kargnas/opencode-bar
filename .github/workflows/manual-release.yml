@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: '버전 업 타입'
+        description: 'Version bump type'
         required: true
         type: choice
         options:
@@ -12,7 +12,7 @@ on:
           - minor
           - major
       prerelease:
-        description: 'Pre-release 여부'
+        description: 'Pre-release'
         required: false
         type: boolean
         default: false
@@ -34,7 +34,6 @@ jobs:
       - name: Get Latest Tag
         id: get_tag
         run: |
-          # 최신 태그 가져오기 (없으면 v0.0.0)
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Latest tag: $LATEST_TAG"
@@ -43,13 +42,10 @@ jobs:
         id: new_version
         run: |
           LATEST="${{ steps.get_tag.outputs.latest_tag }}"
-          # v 제거
           VERSION="${LATEST#v}"
           
-          # 버전 파싱
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           
-          # 버전 증가
           case "${{ inputs.version_bump }}" in
             major)
               MAJOR=$((MAJOR + 1))
@@ -67,6 +63,7 @@ jobs:
           
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
       
       - name: Setup Xcode
@@ -74,49 +71,225 @@ jobs:
         with:
           xcode-version: '15.4'
       
-      - name: Build App
+      - name: Import Developer ID Certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          
+          echo "Certificate imported successfully"
+      
+      - name: Update Version in Info.plist
+        run: |
+          VERSION="${{ steps.new_version.outputs.version_number }}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" CopilotMonitor/CopilotMonitor/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" CopilotMonitor/CopilotMonitor/Info.plist
+          echo "Updated Info.plist to version $VERSION"
+      
+      - name: Build and Archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd CopilotMonitor
-          xcodebuild -project CopilotMonitor.xcodeproj \
+          xcodebuild archive \
+            -project CopilotMonitor.xcodeproj \
             -scheme CopilotMonitor \
             -configuration Release \
-            -archivePath build/CopilotMonitor.xcarchive \
-            archive \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            -archivePath $RUNNER_TEMP/CopilotMonitor.xcarchive \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic
       
-      - name: Export App
+      - name: Export Archive
         run: |
-          cd CopilotMonitor
           xcodebuild -exportArchive \
-            -archivePath build/CopilotMonitor.xcarchive \
-            -exportPath build/export \
-            -exportOptionsPlist ../ExportOptions.plist
+            -archivePath $RUNNER_TEMP/CopilotMonitor.xcarchive \
+            -exportPath $RUNNER_TEMP/export \
+            -exportOptionsPlist ExportOptions.plist
       
-      - name: Create DMG
+      - name: Verify Code Signing
+        run: |
+          echo "Verifying code signature..."
+          codesign --verify --deep --strict --verbose=2 "$RUNNER_TEMP/export/CopilotMonitor.app"
+          
+          echo ""
+          echo "Certificate chain:"
+          codesign -dv --verbose=4 "$RUNNER_TEMP/export/CopilotMonitor.app" 2>&1 | grep "Authority"
+      
+      - name: Create ZIP for Notarization
+        run: |
+          cd $RUNNER_TEMP/export
+          ditto -c -k --keepParent CopilotMonitor.app CopilotMonitor.zip
+          echo "Created ZIP for notarization"
+      
+      - name: Notarize App
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Submitting app for notarization..."
+          xcrun notarytool submit $RUNNER_TEMP/export/CopilotMonitor.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait \
+            --timeout 30m
+          
+          echo "Notarization completed"
+      
+      - name: Staple Notarization Ticket
+        run: |
+          xcrun stapler staple "$RUNNER_TEMP/export/CopilotMonitor.app"
+          xcrun stapler validate "$RUNNER_TEMP/export/CopilotMonitor.app"
+          echo "Notarization ticket stapled successfully"
+      
+      - name: Install create-dmg
+        run: brew install create-dmg
+      
+      - name: Create and Sign DMG
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           VERSION="${{ steps.new_version.outputs.new_version }}"
+          DMG_NAME="CopilotMonitor-${VERSION}.dmg"
           
-          # Create DMG folder structure
-          mkdir -p dmg_temp
-          cp -R CopilotMonitor/build/export/CopilotMonitor.app dmg_temp/
-          ln -s /Applications dmg_temp/Applications
+          create-dmg \
+            --volname "Copilot Monitor" \
+            --window-pos 200 120 \
+            --window-size 500 320 \
+            --icon-size 80 \
+            --icon "CopilotMonitor.app" 125 175 \
+            --app-drop-link 375 175 \
+            --hide-extension "CopilotMonitor.app" \
+            "$DMG_NAME" \
+            "$RUNNER_TEMP/export/" || true
           
-          # Create DMG
-          hdiutil create -volname "Copilot Monitor ${VERSION}" \
-            -srcfolder dmg_temp \
-            -ov -format UDZO \
-            "CopilotMonitor-${VERSION}.dmg"
+          if [ -f "$DMG_NAME" ]; then
+            codesign --force --sign "Developer ID Application" "$DMG_NAME"
+            echo "DMG created and signed: $DMG_NAME"
+          else
+            echo "create-dmg failed, falling back to hdiutil..."
+            mkdir -p dmg_temp
+            cp -R "$RUNNER_TEMP/export/CopilotMonitor.app" dmg_temp/
+            ln -s /Applications dmg_temp/Applications
+            
+            hdiutil create -volname "Copilot Monitor ${VERSION}" \
+              -srcfolder dmg_temp \
+              -ov -format UDZO \
+              "$DMG_NAME"
+            
+            codesign --force --sign "Developer ID Application" "$DMG_NAME"
+            rm -rf dmg_temp
+          fi
+      
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          VERSION="${{ steps.new_version.outputs.new_version }}"
+          DMG_NAME="CopilotMonitor-${VERSION}.dmg"
           
-          rm -rf dmg_temp
+          echo "Submitting DMG for notarization..."
+          xcrun notarytool submit "$DMG_NAME" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait \
+            --timeout 30m
+          
+          xcrun stapler staple "$DMG_NAME"
+          echo "DMG notarized and stapled"
+      
+      - name: Verify Final DMG
+        run: |
+          VERSION="${{ steps.new_version.outputs.new_version }}"
+          DMG_NAME="CopilotMonitor-${VERSION}.dmg"
+          
+          echo "Verifying DMG with spctl..."
+          spctl -a -vvv -t install "$DMG_NAME"
+          
+          echo ""
+          echo "Verifying staple..."
+          xcrun stapler validate "$DMG_NAME"
+      
+      - name: Download Sparkle Tools
+        run: |
+          curl -L -o sparkle.tar.xz https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz
+          mkdir -p sparkle
+          tar -xf sparkle.tar.xz -C sparkle
+          chmod +x sparkle/bin/*
+      
+      - name: Generate Sparkle Signature and Appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          VERSION="${{ steps.new_version.outputs.new_version }}"
+          DMG_NAME="CopilotMonitor-${VERSION}.dmg"
+          DOWNLOAD_URL="https://github.com/kargnas/copilot-usage-monitor/releases/download/${VERSION}/${DMG_NAME}"
+          
+          echo "$SPARKLE_PRIVATE_KEY" > $RUNNER_TEMP/sparkle_key
+          
+          SIGNATURE=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file $RUNNER_TEMP/sparkle_key)
+          echo "Sparkle EdDSA signature: $SIGNATURE"
+          
+          DMG_SIZE=$(stat -f%z "$DMG_NAME")
+          
+          cat > appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>Copilot Monitor Updates</title>
+              <link>https://github.com/kargnas/copilot-usage-monitor/releases/latest/download/appcast.xml</link>
+              <description>Most recent changes with links to updates.</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION#v}</title>
+                <pubDate>$(date -R)</pubDate>
+                <sparkle:version>${VERSION#v}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION#v}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                <enclosure url="${DOWNLOAD_URL}"
+                           sparkle:edSignature="${SIGNATURE}"
+                           length="${DMG_SIZE}"
+                           type="application/octet-stream"/>
+              </item>
+            </channel>
+          </rss>
+          EOF
+          
+          rm -f $RUNNER_TEMP/sparkle_key
+          echo "Appcast.xml generated successfully"
+          cat appcast.xml
+      
+      - name: Cleanup Keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
       
       - name: Create Tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CopilotMonitor/CopilotMonitor/Info.plist
+          git commit -m "chore: bump version to ${{ steps.new_version.outputs.new_version }}" || true
           git tag ${{ steps.new_version.outputs.new_version }}
-          git push origin ${{ steps.new_version.outputs.new_version }}
+          git push origin HEAD:main --follow-tags
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -125,7 +298,9 @@ jobs:
           name: Copilot Monitor ${{ steps.new_version.outputs.new_version }}
           draft: false
           prerelease: ${{ inputs.prerelease }}
-          files: CopilotMonitor-${{ steps.new_version.outputs.new_version }}.dmg
+          files: |
+            CopilotMonitor-${{ steps.new_version.outputs.new_version }}.dmg
+            appcast.xml
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

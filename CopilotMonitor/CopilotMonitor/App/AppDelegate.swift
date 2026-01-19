@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Sparkle
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -8,7 +9,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var sessionExpiredObserver: NSObjectProtocol?
     private var billingLoadedObserver: NSObjectProtocol?
     
+    // Sparkle Updater Controller - 자동 업데이트 관리
+    // XIB 없이 코드로 초기화해야 함 (Menu Bar 앱이므로)
+    private(set) var updaterController: SPUStandardUpdaterController!
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Sparkle 초기화 - 앱 시작 시 자동 업데이트 체크 시작
+        // startingUpdater: true로 설정하여 앱 시작과 동시에 업데이트 체크
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+        
         statusBarController = StatusBarController()
         setupNotificationObservers()
     }

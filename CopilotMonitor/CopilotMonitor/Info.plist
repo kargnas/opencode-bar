@@ -9,12 +9,22 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1</string>
+	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>MACOSX_DEPLOYMENT_TARGET</key>
 	<string>13.0</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/kargnas/copilot-usage-monitor/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>IZgr4CR9D3RKrWp5gTX2eq/w2FtRXdAGenhDRCfaF4Y=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>
