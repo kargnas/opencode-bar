@@ -503,6 +503,7 @@ final class StatusBarController: NSObject {
         loadCachedHistoryOnStartup()
         
         signInItem = NSMenuItem(title: "Sign In", action: #selector(signInClicked), keyEquivalent: "")
+        signInItem.image = NSImage(systemSymbolName: "person.crop.circle.badge.checkmark", accessibilityDescription: "Sign In")
         signInItem.target = self
         menu.addItem(signInItem)
 
@@ -512,14 +513,17 @@ final class StatusBarController: NSObject {
         menu.addItem(resetLoginItem)
         
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshClicked), keyEquivalent: "r")
+        refreshItem.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
         refreshItem.target = self
         menu.addItem(refreshItem)
         
         let checkForUpdatesItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdatesClicked), keyEquivalent: "u")
+        checkForUpdatesItem.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: "Check for Updates")
         checkForUpdatesItem.target = self
         menu.addItem(checkForUpdatesItem)
         
         let refreshIntervalItem = NSMenuItem(title: "Auto Refresh", action: nil, keyEquivalent: "")
+        refreshIntervalItem.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Auto Refresh")
         refreshIntervalMenu = NSMenu()
         for interval in RefreshInterval.allCases {
             let item = NSMenuItem(title: interval.title, action: #selector(refreshIntervalSelected(_:)), keyEquivalent: "")
@@ -541,17 +545,20 @@ final class StatusBarController: NSObject {
         updatePredictionPeriodMenu()
         
         let openBillingItem = NSMenuItem(title: "Open Billing", action: #selector(openBillingClicked), keyEquivalent: "b")
+        openBillingItem.image = NSImage(systemSymbolName: "creditcard", accessibilityDescription: "Open Billing")
         openBillingItem.target = self
         menu.addItem(openBillingItem)
         
         menu.addItem(NSMenuItem.separator())
         launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(launchAtLoginClicked), keyEquivalent: "")
+        launchAtLoginItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Launch at Login")
         launchAtLoginItem.target = self
         updateLaunchAtLoginState()
         menu.addItem(launchAtLoginItem)
         
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit", action: #selector(quitClicked), keyEquivalent: "q")
+        quitItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: "Quit")
         quitItem.target = self
         menu.addItem(quitItem)
         statusItem.menu = menu
