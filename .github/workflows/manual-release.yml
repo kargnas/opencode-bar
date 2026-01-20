@@ -245,7 +245,10 @@ jobs:
           
           echo "$SPARKLE_PRIVATE_KEY" > $RUNNER_TEMP/sparkle_key
           
-          SIGNATURE=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file $RUNNER_TEMP/sparkle_key)
+          # Extract just the signature string from the output
+          # Output format: sparkle:edSignature="<SIG>" length="<LEN>"
+          FULL_OUTPUT=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file $RUNNER_TEMP/sparkle_key)
+          SIGNATURE=$(echo "$FULL_OUTPUT" | awk -F '"' '{print $2}')
           echo "Sparkle EdDSA signature: $SIGNATURE"
           
           DMG_SIZE=$(stat -f%z "$DMG_NAME")
