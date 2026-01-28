@@ -98,11 +98,11 @@ final class UsageFetcher {
             throw UsageFetcherError.parsingFailed(errorMsg)
         }
         
-        let netBilledAmount = (dict["netBilledAmount"] as? Double) ?? (dict["netBilledAmount"] as? Int).map { Double($0) } ?? 0.0
-        let netQuantity = (dict["netQuantity"] as? Double) ?? (dict["netQuantity"] as? Int).map { Double($0) } ?? 0.0
-        let discountQuantity = (dict["discountQuantity"] as? Double) ?? (dict["discountQuantity"] as? Int).map { Double($0) } ?? 0.0
-        let userPremiumRequestEntitlement = (dict["userPremiumRequestEntitlement"] as? Int) ?? (dict["userPremiumRequestEntitlement"] as? Double).map { Int($0) } ?? 0
-        let filteredUserPremiumRequestEntitlement = (dict["filteredUserPremiumRequestEntitlement"] as? Int) ?? (dict["filteredUserPremiumRequestEntitlement"] as? Double).map { Int($0) } ?? 0
+        let netBilledAmount = (dict["netBilledAmount"] as? Double) ?? (dict["netBilledAmount"] as? Int).map { Double($0) } ?? (dict["netBilledAmount"] as? NSNumber)?.doubleValue ?? 0.0
+        let netQuantity = (dict["netQuantity"] as? Double) ?? (dict["netQuantity"] as? Int).map { Double($0) } ?? (dict["netQuantity"] as? NSNumber)?.doubleValue ?? 0.0
+        let discountQuantity = (dict["discountQuantity"] as? Double) ?? (dict["discountQuantity"] as? Int).map { Double($0) } ?? (dict["discountQuantity"] as? NSNumber)?.doubleValue ?? 0.0
+        let userPremiumRequestEntitlement = (dict["userPremiumRequestEntitlement"] as? Int) ?? (dict["userPremiumRequestEntitlement"] as? Double).map { Int($0) } ?? (dict["userPremiumRequestEntitlement"] as? NSNumber)?.intValue ?? 0
+        let filteredUserPremiumRequestEntitlement = (dict["filteredUserPremiumRequestEntitlement"] as? Int) ?? (dict["filteredUserPremiumRequestEntitlement"] as? Double).map { Int($0) } ?? (dict["filteredUserPremiumRequestEntitlement"] as? NSNumber)?.intValue ?? 0
         
         print("Parsed values: discountQuantity=\(discountQuantity), userPremiumRequestEntitlement=\(userPremiumRequestEntitlement)")
         

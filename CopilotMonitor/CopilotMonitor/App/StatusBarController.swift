@@ -557,6 +557,13 @@ final class StatusBarController: NSObject {
         menu.addItem(launchAtLoginItem)
         
         menu.addItem(NSMenuItem.separator())
+        
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let versionItem = NSMenuItem(title: "Version \(version)", action: nil, keyEquivalent: "")
+        versionItem.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "Version")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+        
         let quitItem = NSMenuItem(title: "Quit", action: #selector(quitClicked), keyEquivalent: "q")
         quitItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: "Quit")
         quitItem.target = self
@@ -848,6 +855,9 @@ final class StatusBarController: NSObject {
             }
             if let value = dict[key] as? Int {
                 return Double(value)
+            }
+            if let value = dict[key] as? NSNumber {
+                return value.doubleValue
             }
         }
         return 0.0
