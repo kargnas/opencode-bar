@@ -20,6 +20,7 @@
 		A55555555555555555555555 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A66666666666666666666666 /* Assets.xcassets */; };
 		AD95EBD6AE3134DF4C797577 /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DDC1B4DE6B5118CE4AE8F82 /* ClaudeProvider.swift */; };
 		B248782F500D3B09E0CE5AC8 /* ProviderUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4158558E58B121A9D13C48C3 /* ProviderUsage.swift */; };
+		PR1111111111111111111111 /* ProviderResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR2222222222222222222222 /* ProviderResult.swift */; };
 		C11111111111111111111111 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22222222222222222222222 /* AuthManager.swift */; };
 		C33333333333333333333333 /* UsageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C44444444444444444444444 /* UsageFetcher.swift */; };
 		C55555555555555555555555 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C66666666666666666666666 /* LoginView.swift */; };
@@ -53,6 +54,7 @@
 		OR2222222222222222222222 /* OpenRouterProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenRouterProvider.swift; sourceTree = "<group>"; };
 		18F40F1AC76A49A9B9DF74B0 /* ProviderManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderManager.swift; sourceTree = "<group>"; };
 		4158558E58B121A9D13C48C3 /* ProviderUsage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderUsage.swift; sourceTree = "<group>"; };
+		PR2222222222222222222222 /* ProviderResult.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderResult.swift; sourceTree = "<group>"; };
 		4DDC1B4DE6B5118CE4AE8F82 /* ClaudeProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaudeProvider.swift; sourceTree = "<group>"; };
 		76783C44AA2329AE3FA7E981 /* CodexProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodexProvider.swift; sourceTree = "<group>"; };
 		A22222222222222222222222 /* CopilotMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopilotMonitorApp.swift; sourceTree = "<group>"; };
@@ -184,6 +186,7 @@
 				E22222222222222222222222 /* CopilotUsage.swift */,
 				E44444444444444444444444 /* UsageHistory.swift */,
 				BE39D5663A7ABADC7E54B91D /* ProviderProtocol.swift */,
+				PR2222222222222222222222 /* ProviderResult.swift */,
 				4158558E58B121A9D13C48C3 /* ProviderUsage.swift */,
 			);
 			path = Models;
@@ -323,6 +326,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				PR1111111111111111111111 /* ProviderResult.swift in Sources */,
 				A11111111111111111111111 /* CopilotMonitorApp.swift in Sources */,
 				A33333333333333333333333 /* AppDelegate.swift in Sources */,
 				C11111111111111111111111 /* AuthManager.swift in Sources */,
