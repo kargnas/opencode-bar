@@ -20,7 +20,7 @@ final class CodexProviderTests: XCTestCase {
     }
     
     func testProviderType() {
-        XCTAssertEqual(provider.type, .payAsYouGo)
+        XCTAssertEqual(provider.type, .quotaBased)
     }
     
     func testCodexFixtureDecoding() throws {
