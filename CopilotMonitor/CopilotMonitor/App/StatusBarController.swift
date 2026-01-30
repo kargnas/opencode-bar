@@ -506,15 +506,17 @@ final class StatusBarController: NSObject {
         // Load cached history immediately on startup (before API fetch completes)
         loadCachedHistoryOnStartup()
         
-         // signInItem = NSMenuItem(title: "Sign In", action: #selector(signInClicked), keyEquivalent: "")
-         // signInItem.image = NSImage(systemSymbolName: "person.crop.circle.badge.checkmark", accessibilityDescription: "Sign In")
-         // signInItem.target = self
-         // menu.addItem(signInItem)
+        signInItem = NSMenuItem(title: "Sign In", action: #selector(signInClicked), keyEquivalent: "")
+        signInItem.image = NSImage(systemSymbolName: "person.crop.circle.badge.checkmark", accessibilityDescription: "Sign In")
+        signInItem.target = self
+        signInItem.isHidden = true
+        menu.addItem(signInItem)
 
-         // resetLoginItem = NSMenuItem(title: "Reset Login", action: #selector(resetLoginClicked), keyEquivalent: "")
-         // resetLoginItem.image = NSImage(systemSymbolName: "arrow.counterclockwise", accessibilityDescription: "Reset Login")
-         // resetLoginItem.target = self
-         // menu.addItem(resetLoginItem)
+        resetLoginItem = NSMenuItem(title: "Reset Login", action: #selector(resetLoginClicked), keyEquivalent: "")
+        resetLoginItem.image = NSImage(systemSymbolName: "arrow.counterclockwise", accessibilityDescription: "Reset Login")
+        resetLoginItem.target = self
+        resetLoginItem.isHidden = true
+        menu.addItem(resetLoginItem)
         
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshClicked), keyEquivalent: "r")
         refreshItem.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
