@@ -116,7 +116,8 @@ final class StatusBarController: NSObject {
         let loadingItem = NSMenuItem(title: "Loading...", action: nil, keyEquivalent: "")
         loadingItem.isEnabled = false
         historySubmenu.addItem(loadingItem)
-        menu.addItem(historyMenuItem)
+        // Removed: History now in Copilot submenu only (see createCopilotHistorySubmenu())
+        // menu.addItem(historyMenuItem)
         
         // Load cached history immediately on startup (before API fetch completes)
         loadCachedHistoryOnStartup()
