@@ -87,10 +87,17 @@ final class GeminiCLIProvider: ProviderProtocol {
                 throw ProviderError.decodingError("Empty buckets array")
             }
             
-            // Find minimum remainingFraction (worst-case scenario)
-            let minFraction = response.buckets.map(\.remainingFraction).min() ?? 0.0
+            // Build per-model quota breakdown
+            var modelBreakdown: [String: Double] = [:]
+            var minFraction = 1.0
             
-            // Convert fraction (0.0-1.0) to percentage (0-100)
+            for bucket in response.buckets {
+                let percentage = bucket.remainingFraction * 100.0
+                modelBreakdown[bucket.modelId] = percentage
+                minFraction = min(minFraction, bucket.remainingFraction)
+            }
+            
+            // Convert minimum fraction (0.0-1.0) to percentage (0-100)
             let remainingPercentage = minFraction * 100.0
             
             // Find earliest reset time
@@ -109,7 +116,10 @@ final class GeminiCLIProvider: ProviderProtocol {
                 entitlement: 100,
                 overagePermitted: false
             )
-            return ProviderResult(usage: usage, details: nil)
+            
+            // Create DetailedUsage with per-model breakdown
+            let details = DetailedUsage(modelBreakdown: modelBreakdown)
+            return ProviderResult(usage: usage, details: details)
         } catch let error as DecodingError {
             logger.error("Failed to decode Gemini response: \(error.localizedDescription)")
             throw ProviderError.decodingError("Invalid response format: \(error.localizedDescription)")
