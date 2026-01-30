@@ -1,0 +1,10 @@
+{
+  "data": {
+    "limit": 100.0,
+    "limit_remaining": 99.99,
+    "limit_reset": "weekly",
+    "usage_daily": 0.004,
+    "usage_weekly": 0.5,
+    "usage_monthly": 37.41
+  }
+}

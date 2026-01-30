@@ -36,6 +36,9 @@
 		T55555555555555555555555 /* codex_response.json in Resources */ = {isa = PBXBuildFile; fileRef = T66666666666666666666666 /* codex_response.json */; };
 		T77777777777777777777777 /* copilot_response.json in Resources */ = {isa = PBXBuildFile; fileRef = T88888888888888888888888 /* copilot_response.json */; };
 		T99999999999999999999999 /* gemini_response.json in Resources */ = {isa = PBXBuildFile; fileRef = TAAAAAAAAAAAAAAAAAAAAAAA /* gemini_response.json */; };
+		OR4444444444444444444444 /* OpenRouterProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OR3333333333333333333333 /* OpenRouterProviderTests.swift */; };
+		OR6666666666666666666666 /* openrouter_credits_response.json in Resources */ = {isa = PBXBuildFile; fileRef = OR5555555555555555555555 /* openrouter_credits_response.json */; };
+		OR8888888888888888888888 /* openrouter_key_response.json in Resources */ = {isa = PBXBuildFile; fileRef = OR7777777777777777777777 /* openrouter_key_response.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +84,9 @@
 		T88888888888888888888888 /* copilot_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = copilot_response.json; sourceTree = "<group>"; };
 		TAAAAAAAAAAAAAAAAAAAAAAA /* gemini_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = gemini_response.json; sourceTree = "<group>"; };
 		TDDDDDDDDDDDDDDDDDDDDDD /* CopilotMonitorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CopilotMonitorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		OR3333333333333333333333 /* OpenRouterProviderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenRouterProviderTests.swift; sourceTree = "<group>"; };
+		OR5555555555555555555555 /* openrouter_credits_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = openrouter_credits_response.json; sourceTree = "<group>"; };
+		OR7777777777777777777777 /* openrouter_key_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = openrouter_key_response.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,6 +212,7 @@
 				TOOOOOOOOOOOOOOOOOOOOOOO /* Fixtures */,
 				B63B85E0F2A8C591D7E26AE2 /* GeminiCLIProviderTests.swift */,
 				ED35D8BD06A436306085737D /* CopilotProviderTests.swift */,
+				OR3333333333333333333333 /* OpenRouterProviderTests.swift */,
 			);
 			path = CopilotMonitorTests;
 			sourceTree = "<group>";
@@ -217,6 +224,8 @@
 				T66666666666666666666666 /* codex_response.json */,
 				T88888888888888888888888 /* copilot_response.json */,
 				TAAAAAAAAAAAAAAAAAAAAAAA /* gemini_response.json */,
+				OR5555555555555555555555 /* openrouter_credits_response.json */,
+				OR7777777777777777777777 /* openrouter_key_response.json */,
 			);
 			path = Fixtures;
 			sourceTree = "<group>";
@@ -316,6 +325,8 @@
 				T55555555555555555555555 /* codex_response.json in Resources */,
 				T77777777777777777777777 /* copilot_response.json in Resources */,
 				T99999999999999999999999 /* gemini_response.json in Resources */,
+				OR6666666666666666666666 /* openrouter_credits_response.json in Resources */,
+				OR8888888888888888888888 /* openrouter_key_response.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -356,6 +367,7 @@
 				T11111111111111111111111 /* ProviderUsageTests.swift in Sources */,
 				23AA5FD37F2062EACCA79F50 /* GeminiCLIProviderTests.swift in Sources */,
 				632E52F6050FAD5CAF928E36 /* CopilotProviderTests.swift in Sources */,
+				OR4444444444444444444444 /* OpenRouterProviderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -2040,7 +2040,7 @@ throw ProviderError.authenticationFailed("API key not found")
 
 ---
 
-- [ ] 8. 테스트 및 리팩토링
+- [x] 8. 테스트 및 리팩토링
 
   **What to do**:
   - `CopilotMonitorTests/OpenRouterProviderTests.swift` 생성
