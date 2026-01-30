@@ -43,9 +43,9 @@ final class ClaudeProvider: ProviderProtocol {
     // MARK: - ProviderProtocol Implementation
     
     /// Fetches Claude usage data from Anthropic API
-    /// - Returns: ProviderUsage with remaining quota percentage
+    /// - Returns: ProviderResult with remaining quota percentage
     /// - Throws: ProviderError if fetch fails
-    func fetch() async throws -> ProviderUsage {
+    func fetch() async throws -> ProviderResult {
         // Get access token from TokenManager
         guard let accessToken = tokenManager.getAnthropicAccessToken() else {
             logger.error("Claude access token not found")
@@ -111,11 +111,12 @@ final class ClaudeProvider: ProviderProtocol {
             
             // Return as quota-based usage with remaining percentage as Int
             // Note: ProviderUsage.quotaBased expects Int, so we convert percentage to Int
-            return .quotaBased(
+            let usage = ProviderUsage.quotaBased(
                 remaining: Int(remaining),
                 entitlement: 100,
                 overagePermitted: false
             )
+            return ProviderResult(usage: usage, details: nil)
         } catch let error as DecodingError {
             logger.error("Failed to decode Claude response: \(error.localizedDescription)")
             throw ProviderError.decodingError("Invalid response format: \(error.localizedDescription)")

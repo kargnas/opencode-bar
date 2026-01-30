@@ -1061,7 +1061,7 @@ Parallel Speedup: ~35% faster than sequential
 
 ---
 
-- [ ] 4. Provider 아이콘 Assets.xcassets 전환
+- [x] 4. Provider 아이콘 Assets.xcassets 전환
 
   **What to do**:
   - `StatusBarController.iconForProvider()` 메서드 수정 (line 1065-1078)
@@ -1139,7 +1139,7 @@ Parallel Speedup: ~35% faster than sequential
 
 ---
 
-- [ ] 5. OpenCodeProvider 구현
+- [x] 5. OpenCodeProvider 구현
 
   **What to do**:
   - `Providers/OpenCodeProvider.swift` 파일 생성
@@ -1546,7 +1546,7 @@ throw ProviderError.authenticationFailed("API key not found")
 
 ---
 
-- [ ] 6. Submenu 디테일 표시 구현 + ProviderResult 아키텍처 변경
+- [x] 6. Submenu 디테일 표시 구현 + ProviderResult 아키텍처 변경
 
   **What to do**:
   - **ProviderResult 아키텍처 변경** (선행 작업):

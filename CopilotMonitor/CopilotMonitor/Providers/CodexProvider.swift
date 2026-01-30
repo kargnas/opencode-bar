@@ -23,7 +23,7 @@ final class CodexProvider: ProviderProtocol {
         let credits: [String: AnyCodable]?
     }
     
-    func fetch() async throws -> ProviderUsage {
+    func fetch() async throws -> ProviderResult {
         guard let accessToken = TokenManager.shared.getOpenAIAccessToken() else {
             logger.error("Failed to retrieve OpenAI access token")
             throw ProviderError.authenticationFailed("OpenAI access token not found")
@@ -75,7 +75,8 @@ final class CodexProvider: ProviderProtocol {
         
         logger.info("Successfully fetched Codex usage: \(usedPercent)% used, \(remaining)% remaining, resets in \(resetAfterSeconds)s")
         
-        return .quotaBased(remaining: remaining, entitlement: entitlement, overagePermitted: false)
+        let usage = ProviderUsage.quotaBased(remaining: remaining, entitlement: entitlement, overagePermitted: false)
+        return ProviderResult(usage: usage, details: nil)
     }
 }
 

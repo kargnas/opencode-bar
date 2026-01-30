@@ -420,7 +420,7 @@ final class StatusBarController: NSObject {
     private var predictionPeriodMenu: NSMenu!
     
     // Multi-provider properties
-    private var providerResults: [ProviderIdentifier: ProviderUsage] = [:]
+    private var providerResults: [ProviderIdentifier: ProviderResult] = [:]
     private var enabledProvidersMenu: NSMenu!
     
     private var usagePredictor: UsagePredictor {
@@ -989,11 +989,16 @@ final class StatusBarController: NSObject {
         insertIndex += 1
         
         var hasPayAsYouGo = false
-        for (identifier, usage) in providerResults {
-            if case .payAsYouGo(let utilization, _) = usage {
+        for (identifier, result) in providerResults {
+            if case .payAsYouGo(let utilization, _) = result.usage {
                 hasPayAsYouGo = true
                 let item = createPayAsYouGoMenuItem(identifier: identifier, utilization: utilization)
                 item.tag = 999
+                
+                if let details = result.details, details.hasAnyValue {
+                    item.submenu = createDetailSubmenu(details)
+                }
+                
                 menu.insertItem(item, at: insertIndex)
                 insertIndex += 1
             }
@@ -1019,8 +1024,8 @@ final class StatusBarController: NSObject {
         insertIndex += 1
         
         var hasQuota = false
-        for (identifier, usage) in providerResults {
-            if case .quotaBased(let remaining, let entitlement, _) = usage {
+        for (identifier, result) in providerResults {
+            if case .quotaBased(let remaining, let entitlement, _) = result.usage {
                 hasQuota = true
                 let percentage = entitlement > 0 ? (Double(remaining) / Double(entitlement)) * 100 : 0
                 let item = createQuotaMenuItem(identifier: identifier, percentage: percentage)
@@ -1088,6 +1093,48 @@ final class StatusBarController: NSObject {
         rect.fill(using: .sourceAtop)
         tinted.unlockFocus()
         return tinted
+    }
+    
+    private func createDetailSubmenu(_ details: DetailedUsage) -> NSMenu {
+        let submenu = NSMenu()
+        
+        if let daily = details.dailyUsage {
+            let item = NSMenuItem(title: String(format: "Daily: $%.2f", daily), action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "calendar", accessibilityDescription: "Daily")
+            submenu.addItem(item)
+        }
+        
+        if let weekly = details.weeklyUsage {
+            let item = NSMenuItem(title: String(format: "Weekly: $%.2f", weekly), action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "calendar", accessibilityDescription: "Weekly")
+            submenu.addItem(item)
+        }
+        
+        if let monthly = details.monthlyUsage {
+            let item = NSMenuItem(title: String(format: "Monthly: $%.2f", monthly), action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "calendar", accessibilityDescription: "Monthly")
+            submenu.addItem(item)
+        }
+        
+        if let remaining = details.remainingCredits {
+            let item = NSMenuItem(title: String(format: "Credits: $%.2f left", remaining), action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "creditcard", accessibilityDescription: "Credits")
+            submenu.addItem(item)
+        }
+        
+        if let limit = details.limit, let remaining = details.limitRemaining {
+            let item = NSMenuItem(title: String(format: "Limit: $%.2f / $%.2f", remaining, limit), action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "chart.bar", accessibilityDescription: "Limit")
+            submenu.addItem(item)
+        }
+        
+        if let period = details.resetPeriod {
+            let item = NSMenuItem(title: "Resets: \(period)", action: nil, keyEquivalent: "")
+            item.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Reset")
+            submenu.addItem(item)
+        }
+        
+        return submenu
     }
     
     private func evalJSONString(_ js: String, in webView: WKWebView) async throws -> String {

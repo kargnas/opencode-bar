@@ -25,7 +25,7 @@ final class OpenCodeProvider: ProviderProtocol {
     
     // MARK: - ProviderProtocol
     
-    func fetch() async throws -> ProviderUsage {
+    func fetch() async throws -> ProviderResult {
         guard let apiKey = tokenManager.getOpenCodeAPIKey() else {
             logger.debug("OpenCode API key not found")
             throw ProviderError.authenticationFailed("OpenCode API key not found")
@@ -84,6 +84,9 @@ final class OpenCodeProvider: ProviderProtocol {
         
         logger.info("Successfully fetched OpenCode usage: \(String(format: "%.2f", utilization))% utilized (used: \(decoded.data.used_credits), total: \(decoded.data.total_credits))")
         
-        return .payAsYouGo(utilization: utilization, resetsAt: nil)
+        return ProviderResult(
+            usage: .payAsYouGo(utilization: utilization, resetsAt: nil),
+            details: nil  // API not available yet
+        )
     }
 }

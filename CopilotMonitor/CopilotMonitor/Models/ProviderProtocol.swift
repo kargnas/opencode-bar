@@ -51,9 +51,9 @@ protocol ProviderProtocol: AnyObject {
     var type: ProviderType { get }
     
     /// Fetches current usage data from the provider
-    /// - Returns: ProviderUsage containing current usage information
+    /// - Returns: ProviderResult containing usage and optional detailed information
     /// - Throws: ProviderError if fetch fails
-    func fetch() async throws -> ProviderUsage
+    func fetch() async throws -> ProviderResult
 }
 
 /// Errors that can occur during provider operations

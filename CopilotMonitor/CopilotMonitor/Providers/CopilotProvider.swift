@@ -24,9 +24,9 @@ final class CopilotProvider: ProviderProtocol {
     // MARK: - ProviderProtocol Implementation
     
     /// Fetches Copilot usage data from GitHub internal API
-    /// - Returns: ProviderUsage.quotaBased with remaining, entitlement, and overage
+    /// - Returns: ProviderResult.quotaBased with remaining, entitlement, and overage
     /// - Throws: ProviderError if fetch fails (falls back to cached data)
-    func fetch() async throws -> ProviderUsage {
+    func fetch() async throws -> ProviderResult {
         logger.info("CopilotProvider: Starting fetch")
         
         guard let customerId = await fetchCustomerId() else {
@@ -47,11 +47,12 @@ final class CopilotProvider: ProviderProtocol {
         
         logger.info("CopilotProvider: Fetch successful - used: \(usage.usedRequests), limit: \(usage.limitRequests), remaining: \(remaining)")
         
-        return .quotaBased(
+        let providerUsage = ProviderUsage.quotaBased(
             remaining: remaining,
             entitlement: usage.limitRequests,
             overagePermitted: true
         )
+        return ProviderResult(usage: providerUsage, details: nil)
     }
     
     // MARK: - Customer ID Fetching
@@ -306,9 +307,9 @@ final class CopilotProvider: ProviderProtocol {
         }
     }
     
-    /// Load cached usage data and convert to ProviderUsage
+    /// Load cached usage data and convert to ProviderResult
     /// - Throws: ProviderError.providerError if no cache available
-    private func loadCachedUsage() throws -> ProviderUsage {
+    private func loadCachedUsage() throws -> ProviderResult {
         guard let data = UserDefaults.standard.data(forKey: cacheKey),
               let cached = try? JSONDecoder().decode(CachedUsage.self, from: data) else {
             logger.error("CopilotProvider: No cached data available")
@@ -320,10 +321,11 @@ final class CopilotProvider: ProviderProtocol {
         
         logger.info("CopilotProvider: Using cached data from \(cached.timestamp)")
         
-        return .quotaBased(
+        let providerUsage = ProviderUsage.quotaBased(
             remaining: remaining,
             entitlement: usage.limitRequests,
             overagePermitted: true
         )
+        return ProviderResult(usage: providerUsage, details: nil)
     }
 }

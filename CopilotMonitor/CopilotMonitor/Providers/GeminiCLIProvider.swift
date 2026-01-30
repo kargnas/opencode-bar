@@ -35,9 +35,9 @@ final class GeminiCLIProvider: ProviderProtocol {
     // MARK: - ProviderProtocol Implementation
     
     /// Fetches Gemini CLI quota data from cloudcode-pa.googleapis.com
-    /// - Returns: ProviderUsage with remaining quota percentage (worst-case across all models)
+    /// - Returns: ProviderResult with remaining quota percentage (worst-case across all models)
     /// - Throws: ProviderError if fetch fails
-    func fetch() async throws -> ProviderUsage {
+    func fetch() async throws -> ProviderResult {
         // Refresh OAuth access token using stored refresh token
         guard let accessToken = try await tokenManager.refreshGeminiAccessTokenFromStorage() else {
             logger.error("Failed to refresh Gemini access token")
@@ -104,11 +104,12 @@ final class GeminiCLIProvider: ProviderProtocol {
             
             // Return as quota-based usage with remaining percentage
             // Using 100 as entitlement since we're working with percentages
-            return .quotaBased(
+            let usage = ProviderUsage.quotaBased(
                 remaining: Int(remainingPercentage),
                 entitlement: 100,
                 overagePermitted: false
             )
+            return ProviderResult(usage: usage, details: nil)
         } catch let error as DecodingError {
             logger.error("Failed to decode Gemini response: \(error.localizedDescription)")
             throw ProviderError.decodingError("Invalid response format: \(error.localizedDescription)")

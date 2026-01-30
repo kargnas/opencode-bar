@@ -38,16 +38,15 @@ final class OpenRouterProvider: ProviderProtocol {
     
     // MARK: - ProviderProtocol
     
-    func fetch() async throws -> ProviderUsage {
+    func fetch() async throws -> ProviderResult {
         guard let apiKey = TokenManager.shared.getOpenRouterAPIKey() else {
             logger.error("Failed to retrieve OpenRouter API key")
             throw ProviderError.authenticationFailed("OpenRouter API key not found")
         }
         
-        // Fetch credits data for utilization calculation
         let creditsResponse = try await fetchCredits(apiKey: apiKey)
+        let keyResponse = try await fetchKeyInfo(apiKey: apiKey)
         
-        // Calculate utilization percentage with zero-division protection
         let utilization: Double
         if creditsResponse.data.total_credits > 0 {
             utilization = (creditsResponse.data.total_usage / creditsResponse.data.total_credits) * 100.0
@@ -58,7 +57,21 @@ final class OpenRouterProvider: ProviderProtocol {
         
         logger.info("Successfully fetched OpenRouter usage: \(String(format: "%.2f", utilization))% utilized (used: \(creditsResponse.data.total_usage), total: \(creditsResponse.data.total_credits))")
         
-        return .payAsYouGo(utilization: utilization, resetsAt: nil)
+        let details = DetailedUsage(
+            dailyUsage: keyResponse.data.usage_daily,
+            weeklyUsage: keyResponse.data.usage_weekly,
+            monthlyUsage: keyResponse.data.usage_monthly,
+            totalCredits: creditsResponse.data.total_credits,
+            remainingCredits: creditsResponse.data.total_credits - creditsResponse.data.total_usage,
+            limit: keyResponse.data.limit,
+            limitRemaining: keyResponse.data.limit_remaining,
+            resetPeriod: keyResponse.data.limit_reset
+        )
+        
+        return ProviderResult(
+            usage: .payAsYouGo(utilization: utilization, resetsAt: nil),
+            details: details
+        )
     }
     
     // MARK: - Private API Methods

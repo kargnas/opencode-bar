@@ -32,7 +32,7 @@ final class ProviderManager {
     
     /// Last successful fetch results (used as fallback on errors)
     /// Access via updateCache/getCache methods for thread safety
-    private var cachedResults: [ProviderIdentifier: ProviderUsage] = [:]
+    private var cachedResults: [ProviderIdentifier: ProviderResult] = [:]
     
     // MARK: - Initialization
     
@@ -44,15 +44,15 @@ final class ProviderManager {
     // MARK: - Public API
     
     /// Fetches usage data from all registered providers in parallel
-    /// - Returns: Dictionary mapping provider identifiers to their usage data
+    /// - Returns: Dictionary mapping provider identifiers to their result data
     /// - Note: Returns partial results if some providers fail (graceful degradation)
-    func fetchAll() async -> [ProviderIdentifier: ProviderUsage] {
+    func fetchAll() async -> [ProviderIdentifier: ProviderResult] {
         logger.info("Starting parallel fetch for \(self.providers.count) providers")
         
-        var results: [ProviderIdentifier: ProviderUsage] = [:]
+        var results: [ProviderIdentifier: ProviderResult] = [:]
         
         // Use TaskGroup for parallel fetching with timeout
-        await withTaskGroup(of: (ProviderIdentifier, ProviderUsage?).self) { group in
+        await withTaskGroup(of: (ProviderIdentifier, ProviderResult?).self) { group in
             for provider in self.providers {
                 group.addTask { [weak self] in
                     guard let self = self else {
@@ -61,13 +61,13 @@ final class ProviderManager {
                     
                     // Fetch with timeout
                     do {
-                        let usage = try await self.fetchWithTimeout(provider: provider)
+                        let result = try await self.fetchWithTimeout(provider: provider)
                         
                         // Cache successful result (async-safe using Task)
-                        await self.updateCache(identifier: provider.identifier, usage: usage)
+                        await self.updateCache(identifier: provider.identifier, result: result)
                         
                         logger.info("✓ \(provider.identifier.displayName) fetch succeeded")
-                        return (provider.identifier, usage)
+                        return (provider.identifier, result)
                     } catch {
                         logger.error("✗ \(provider.identifier.displayName) fetch failed: \(error.localizedDescription)")
                         
@@ -84,9 +84,9 @@ final class ProviderManager {
             }
             
             // Collect results from all tasks
-            for await (identifier, usage) in group {
-                if let usage = usage {
-                    results[identifier] = usage
+            for await (identifier, result) in group {
+                if let result = result {
+                    results[identifier] = result
                 }
             }
         }
@@ -100,7 +100,7 @@ final class ProviderManager {
     /// - Returns: Total cost in dollars (0.0 if no overage)
     /// - Note: Current ProviderUsage model doesn't include cost field
     ///         This is a placeholder implementation until model is enhanced
-    func calculateTotalOverageCost(from results: [ProviderIdentifier: ProviderUsage]) -> Double {
+    func calculateTotalOverageCost(from results: [ProviderIdentifier: ProviderResult]) -> Double {
         // TODO: Enhance ProviderUsage.payAsYouGo to include cost field
         // Current implementation returns 0.0 as cost data not available in model
         logger.debug("Total overage cost: $0.00 (cost tracking not yet implemented in ProviderUsage)")
@@ -110,9 +110,9 @@ final class ProviderManager {
     /// Identifies providers with low quota (<20% remaining)
     /// - Parameter results: Results from fetchAll()
     /// - Returns: Array of (provider, remaining percentage) tuples for providers below threshold
-    func getQuotaAlerts(from results: [ProviderIdentifier: ProviderUsage]) -> [(ProviderIdentifier, Double)] {
-        let alerts = results.compactMap { (identifier, usage) -> (ProviderIdentifier, Double)? in
-            switch usage {
+    func getQuotaAlerts(from results: [ProviderIdentifier: ProviderResult]) -> [(ProviderIdentifier, Double)] {
+        let alerts = results.compactMap { (identifier, result) -> (ProviderIdentifier, Double)? in
+            switch result.usage {
             case .quotaBased(let remaining, let entitlement, _):
                 guard entitlement > 0 else { return nil }
                 
@@ -152,10 +152,10 @@ final class ProviderManager {
     
     /// Fetches usage from a provider with timeout
     /// - Parameter provider: The provider to fetch from
-    /// - Returns: ProviderUsage data
+    /// - Returns: ProviderResult data
     /// - Throws: ProviderError or timeout error
-    private func fetchWithTimeout(provider: ProviderProtocol) async throws -> ProviderUsage {
-        return try await withThrowingTaskGroup(of: ProviderUsage.self) { group in
+    private func fetchWithTimeout(provider: ProviderProtocol) async throws -> ProviderResult {
+        return try await withThrowingTaskGroup(of: ProviderResult.self) { group in
             // Add fetch task
             group.addTask {
                 try await provider.fetch()
@@ -182,19 +182,19 @@ final class ProviderManager {
     /// Thread-safe cache update (async-safe using Task isolation)
     /// - Parameters:
     ///   - identifier: Provider identifier
-    ///   - usage: Usage data to cache
-    private func updateCache(identifier: ProviderIdentifier, usage: ProviderUsage) async {
+    ///   - result: Result data to cache
+    private func updateCache(identifier: ProviderIdentifier, result: ProviderResult) async {
         // Using Task.detached to avoid inheriting actor context
         // Cache updates are non-critical and can be async
         Task.detached { [weak self] in
-            self?.cachedResults[identifier] = usage
+            self?.cachedResults[identifier] = result
         }
     }
     
     /// Thread-safe cache retrieval (async-safe using Task isolation)
     /// - Parameter identifier: Provider identifier
-    /// - Returns: Cached usage data or nil
-    private func getCache(identifier: ProviderIdentifier) async -> ProviderUsage? {
+    /// - Returns: Cached result data or nil
+    private func getCache(identifier: ProviderIdentifier) async -> ProviderResult? {
         return cachedResults[identifier]
     }
 }
