@@ -26,6 +26,7 @@
 		C55555555555555555555555 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C66666666666666666666666 /* LoginView.swift */; };
 		BCDE4599B74AF7A799CE1D /* StatusBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0CA52627AF05BD67B56E /* StatusBarIconView.swift */; };
 		3F5E9C18CD82F62GGDC25D6 /* UsageMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4D8B07BA71E51FFCB14CC5 /* UsageMenuItemView.swift */; };
+		ME1111111111111111111111 /* MenuEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = ME2222222222222222222222 /* MenuEnums.swift */; };
 		CB3FA9AE43F3466269FA56F4 /* ProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE39D5663A7ABADC7E54B91D /* ProviderProtocol.swift */; };
 		D11111111111111111111111 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22222222222222222222222 /* StatusBarController.swift */; };
 		E11111111111111111111111 /* CopilotUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22222222222222222222222 /* CopilotUsage.swift */; };
@@ -78,6 +79,7 @@
 		C66666666666666666666666 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		AD0CA52627AF05BD67B56E /* StatusBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarIconView.swift; sourceTree = "<group>"; };
 		2E4D8B07BA71E51FFCB14CC5 /* UsageMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageMenuItemView.swift; sourceTree = "<group>"; };
+		ME2222222222222222222222 /* MenuEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuEnums.swift; sourceTree = "<group>"; };
 		D22222222222222222222222 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		DBF0C48368166F3AD0C79F92 /* TokenManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TokenManager.swift; sourceTree = "<group>"; };
 		E22222222222222222222222 /* CopilotUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopilotUsage.swift; sourceTree = "<group>"; };
@@ -146,22 +148,23 @@
 			);
 			sourceTree = "<group>";
 		};
-		ACCCCCCCCCCCCCCCCCCCCCCC /* CopilotMonitor */ = {
-			isa = PBXGroup;
-			children = (
-				A22222222222222222222222 /* CopilotMonitorApp.swift */,
-				AEEEEEEEEEEEEEEEEEEEEEEE /* App */,
-				C77777777777777777777777 /* Services */,
-				C88888888888888888888888 /* Views */,
-				E33333333333333333333333 /* Models */,
-				A66666666666666666666666 /* Assets.xcassets */,
-				A88888888888888888888888 /* CopilotMonitor.entitlements */,
-				A99999999999999999999999 /* Info.plist */,
-				4D0546BDF4C7CD74746285DF /* Providers */,
-			);
-			path = CopilotMonitor;
-			sourceTree = "<group>";
-		};
+	ACCCCCCCCCCCCCCCCCCCCCCC /* CopilotMonitor */ = {
+		isa = PBXGroup;
+		children = (
+			A22222222222222222222222 /* CopilotMonitorApp.swift */,
+			AEEEEEEEEEEEEEEEEEEEEEEE /* App */,
+			C77777777777777777777777 /* Services */,
+			C88888888888888888888888 /* Views */,
+			ME3333333333333333333333 /* Helpers */,
+			E33333333333333333333333 /* Models */,
+			A66666666666666666666666 /* Assets.xcassets */,
+			A88888888888888888888888 /* CopilotMonitor.entitlements */,
+			A99999999999999999999999 /* Info.plist */,
+			4D0546BDF4C7CD74746285DF /* Providers */,
+		);
+		path = CopilotMonitor;
+		sourceTree = "<group>";
+	};
 		ADDDDDDDDDDDDDDDDDDDDDDD /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -194,16 +197,24 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
-		C88888888888888888888888 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				C66666666666666666666666 /* LoginView.swift */,
-				AD0CA52627AF05BD67B56E /* StatusBarIconView.swift */,
-				2E4D8B07BA71E51FFCB14CC5 /* UsageMenuItemView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
+	C88888888888888888888888 /* Views */ = {
+		isa = PBXGroup;
+		children = (
+			C66666666666666666666666 /* LoginView.swift */,
+			AD0CA52627AF05BD67B56E /* StatusBarIconView.swift */,
+			2E4D8B07BA71E51FFCB14CC5 /* UsageMenuItemView.swift */,
+		);
+		path = Views;
+		sourceTree = "<group>";
+	};
+	ME3333333333333333333333 /* Helpers */ = {
+		isa = PBXGroup;
+		children = (
+			ME2222222222222222222222 /* MenuEnums.swift */,
+		);
+		path = Helpers;
+		sourceTree = "<group>";
+	};
 		E33333333333333333333333 /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -360,10 +371,11 @@
 				A33333333333333333333333 /* AppDelegate.swift in Sources */,
 				C11111111111111111111111 /* AuthManager.swift in Sources */,
 				C33333333333333333333333 /* UsageFetcher.swift in Sources */,
-				C55555555555555555555555 /* LoginView.swift in Sources */,
-				BCDE4599B74AF7A799CE1D /* StatusBarIconView.swift in Sources */,
-				3F5E9C18CD82F62GGDC25D6 /* UsageMenuItemView.swift in Sources */,
-				D11111111111111111111111 /* StatusBarController.swift in Sources */,
+			C55555555555555555555555 /* LoginView.swift in Sources */,
+			BCDE4599B74AF7A799CE1D /* StatusBarIconView.swift in Sources */,
+			3F5E9C18CD82F62GGDC25D6 /* UsageMenuItemView.swift in Sources */,
+			ME1111111111111111111111 /* MenuEnums.swift in Sources */,
+			D11111111111111111111111 /* StatusBarController.swift in Sources */,
 				E11111111111111111111111 /* CopilotUsage.swift in Sources */,
 				E33333333333333333333334 /* UsageHistory.swift in Sources */,
 				F11111111111111111111111 /* UsagePredictor.swift in Sources */,
