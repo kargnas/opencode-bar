@@ -2,10 +2,8 @@ name: Build and Release
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+  pull_request: 
+  workflow_dispatch:
 
 jobs:
   build:
@@ -267,7 +265,7 @@ jobs:
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: OpenCode Usage Monitor ${{ steps.version.outputs.version }}
           draft: false
