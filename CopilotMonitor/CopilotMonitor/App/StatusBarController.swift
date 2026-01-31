@@ -1059,7 +1059,8 @@ final class StatusBarController: NSObject {
         
         let label = NSTextField(labelWithString: title)
         label.font = NSFont.systemFont(ofSize: 11, weight: .bold)
-        label.textColor = NSColor.labelColor.withAlphaComponent(0.5)
+        // Use secondaryLabelColor which adapts properly to dark/light mode in menu items
+        label.textColor = NSColor.secondaryLabelColor
         label.translatesAutoresizingMaskIntoConstraints = false
         
         view.addSubview(label)

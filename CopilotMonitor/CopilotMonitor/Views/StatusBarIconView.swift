@@ -8,6 +8,13 @@ final class StatusBarIconView: NSView {
     private var isLoading = false
     private var hasError = false
     
+    private var textColor: NSColor {
+        guard let button = self.superview as? NSStatusBarButton else {
+            return .white
+        }
+        return button.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .white : .black
+    }
+    
     /// Dynamic width calculation based on content
     /// - Copilot icon (16px) + padding (6px) = 22px base
     /// - With add-on cost: icon + cost text width
@@ -59,27 +66,27 @@ final class StatusBarIconView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         
-        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let color = textColor
+        let yOffset: CGFloat = 4
         
-        drawCopilotIcon(at: NSPoint(x: 2, y: 3), size: 16, isDark: isDark)
+        drawCopilotIcon(at: NSPoint(x: 2, y: yOffset), size: 16, color: color)
         
         if addOnCost > 0 {
-            drawCostText(at: NSPoint(x: 22, y: 3), isDark: isDark)
+            drawCostText(at: NSPoint(x: 22, y: yOffset), color: color)
         } else {
-            let progressRect = NSRect(x: 22, y: 7, width: 8, height: 8)
-            drawCircularProgress(in: progressRect, isDark: isDark)
-            drawUsageText(at: NSPoint(x: 34, y: 3), isDark: isDark)
+            let progressRect = NSRect(x: 22, y: yOffset + 4, width: 8, height: 8)
+            drawCircularProgress(in: progressRect, color: color)
+            drawUsageText(at: NSPoint(x: 34, y: yOffset), color: color)
         }
     }
     
-    private func drawCopilotIcon(at origin: NSPoint, size: CGFloat, isDark: Bool) {
+    private func drawCopilotIcon(at origin: NSPoint, size: CGFloat, color: NSColor) {
         guard let icon = NSImage(systemSymbolName: "gauge.medium", accessibilityDescription: "Usage") else { return }
         icon.isTemplate = true
         
-        let tintColor = isDark ? NSColor.white : NSColor.black
         let tintedImage = NSImage(size: icon.size)
         tintedImage.lockFocus()
-        tintColor.set()
+        color.set()
         let imageRect = NSRect(origin: .zero, size: icon.size)
         imageRect.fill()
         icon.draw(in: imageRect, from: .zero, operation: .destinationIn, fraction: 1.0)
@@ -90,20 +97,19 @@ final class StatusBarIconView: NSView {
         tintedImage.draw(in: iconRect)
     }
     
-    private func drawCircularProgress(in rect: NSRect, isDark: Bool) {
+    private func drawCircularProgress(in rect: NSRect, color: NSColor) {
         let center = NSPoint(x: rect.midX, y: rect.midY)
         let radius = min(rect.width, rect.height) / 2 - 0.5
         let lineWidth: CGFloat = 2
-        let strokeColor = isDark ? NSColor.white : NSColor.black
         
-        strokeColor.withAlphaComponent(0.2).setStroke()
+        color.withAlphaComponent(0.2).setStroke()
         let bgPath = NSBezierPath()
         bgPath.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
         bgPath.lineWidth = lineWidth
         bgPath.stroke()
         
         if isLoading {
-            strokeColor.withAlphaComponent(0.6).setStroke()
+            color.withAlphaComponent(0.6).setStroke()
             let loadingPath = NSBezierPath()
             loadingPath.appendArc(withCenter: center, radius: radius, startAngle: 90, endAngle: 180)
             loadingPath.lineWidth = lineWidth
@@ -112,7 +118,7 @@ final class StatusBarIconView: NSView {
         }
         
         if hasError {
-            strokeColor.withAlphaComponent(0.6).setStroke()
+            color.withAlphaComponent(0.6).setStroke()
             let errorPath = NSBezierPath()
             errorPath.appendArc(withCenter: center, radius: radius, startAngle: 90, endAngle: 90 - 90, clockwise: true)
             errorPath.lineWidth = lineWidth
@@ -120,7 +126,7 @@ final class StatusBarIconView: NSView {
             return
         }
         
-        strokeColor.setStroke()
+        color.setStroke()
         let endAngle = 90 - (360 * percentage / 100)
         let progressPath = NSBezierPath()
         progressPath.appendArc(withCenter: center, radius: radius, startAngle: 90, endAngle: CGFloat(endAngle), clockwise: true)
@@ -128,7 +134,7 @@ final class StatusBarIconView: NSView {
         progressPath.stroke()
     }
     
-    private func drawUsageText(at origin: NSPoint, isDark: Bool) {
+    private func drawUsageText(at origin: NSPoint, color: NSColor) {
         let text: String
         
         if isLoading {
@@ -139,24 +145,22 @@ final class StatusBarIconView: NSView {
             text = "\(usedCount)"
         }
         
-        let textColor = isDark ? NSColor.white : NSColor.black
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: textColor
+            .foregroundColor: color
         ]
         
         let attrString = NSAttributedString(string: text, attributes: attributes)
         attrString.draw(at: origin)
     }
     
-    private func drawCostText(at origin: NSPoint, isDark: Bool) {
+    private func drawCostText(at origin: NSPoint, color: NSColor) {
         let text = formatCost(addOnCost)
-        let textColor = isDark ? NSColor.white : NSColor.black
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: textColor
+            .foregroundColor: color
         ]
         let attrString = NSAttributedString(string: text, attributes: attributes)
         attrString.draw(at: origin)
@@ -170,7 +174,7 @@ final class StatusBarIconView: NSView {
         }
     }
     
-    private func colorForPercentage(_ percentage: Double, isDark: Bool) -> NSColor {
+    private func colorForPercentage(_ percentage: Double) -> NSColor {
         return NSColor.white
     }
 }

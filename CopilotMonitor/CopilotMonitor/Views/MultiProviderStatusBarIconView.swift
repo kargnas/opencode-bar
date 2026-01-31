@@ -81,35 +81,34 @@ final class MultiProviderStatusBarIconView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         
-        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        // Use view's own appearance to detect menu bar background (not app appearance)
+        let isDark = self.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         
         var xOffset: CGFloat = 2
+        let yOffset: CGFloat = 5
         
-        // Draw dollar sign icon (using bold $ text as icon)
-        drawDollarIcon(at: NSPoint(x: xOffset, y: 3), isDark: isDark)
+        drawDollarIcon(at: NSPoint(x: xOffset, y: yOffset), isDark: isDark)
         xOffset += 20
         
         if isLoading {
-            drawText("...", at: NSPoint(x: xOffset, y: 3), font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), isDark: isDark)
+            drawText("...", at: NSPoint(x: xOffset, y: yOffset), font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), isDark: isDark)
             return
         }
         
         if hasError {
-            drawText("Err", at: NSPoint(x: xOffset, y: 3), font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), isDark: isDark)
+            drawText("Err", at: NSPoint(x: xOffset, y: yOffset), font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), isDark: isDark)
             return
         }
         
-        // Draw cost text
         let costText = formatCost(totalOverageCost)
         let costFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
-        drawText(costText, at: NSPoint(x: xOffset, y: 3), font: costFont, isDark: isDark)
+        drawText(costText, at: NSPoint(x: xOffset, y: yOffset), font: costFont, isDark: isDark)
         
         let costWidth = (costText as NSString).size(withAttributes: [.font: costFont]).width
         xOffset += costWidth + 4
         
-        // Draw alert icons with percentages
         for alert in alerts {
-            drawProviderAlert(alert, at: NSPoint(x: xOffset, y: 3), isDark: isDark)
+            drawProviderAlert(alert, at: NSPoint(x: xOffset, y: yOffset), isDark: isDark)
             
             let percentText = String(format: "%.0f%%", alert.remainingPercent)
             let percentFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)

@@ -5,6 +5,7 @@
 
 ## UI Styling Rules
 - **No colors for text emphasis**: Do NOT use `NSColor` attributes like `.foregroundColor` for menu items or labels.
+- **Do not use hex color**: Use pre-defined colors by system.
 - **Use instead**:
   - **Bold**: `NSFont.boldSystemFont(ofSize:)` for important text
   - **Underline**: `.underlineStyle: NSUnderlineStyle.single.rawValue` for critical warnings
