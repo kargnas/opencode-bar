@@ -134,32 +134,31 @@ final class ClaudeProvider: ProviderProtocol {
             
             logger.info("Claude reset times - 5h: \(fiveHourReset?.description ?? "nil"), 7d: \(sevenDayReset?.description ?? "nil")")
             
-            // Extract utilization percentages for each window
             let fiveHourUsage = response.five_hour?.utilization
             let sonnetUsage = response.seven_day_sonnet?.utilization
+            let sonnetReset = response.seven_day_sonnet?.resets_at.flatMap { parseISO8601Date($0) }
             let opusUsage = response.seven_day_opus?.utilization
+            let opusReset = response.seven_day_opus?.resets_at.flatMap { parseISO8601Date($0) }
             
-            // Extract extra usage enabled status
             let extraUsageEnabled = response.extra_usage?.is_enabled
             
             logger.info("Claude usage fetched: 7d=\(utilization)%, 5h=\(fiveHourUsage?.description ?? "N/A")%, sonnet=\(sonnetUsage?.description ?? "N/A")%, opus=\(opusUsage?.description ?? "N/A")%")
             
-            // Return as quota-based usage with remaining percentage as Int
-            // Note: ProviderUsage.quotaBased expects Int, so we convert percentage to Int
             let usage = ProviderUsage.quotaBased(
                 remaining: Int(remaining),
                 entitlement: 100,
                 overagePermitted: false
             )
             
-            // Populate DetailedUsage with all available fields
             let details = DetailedUsage(
                 fiveHourUsage: fiveHourUsage,
                 fiveHourReset: fiveHourReset,
                 sevenDayUsage: utilization,
                 sevenDayReset: sevenDayReset,
                 sonnetUsage: sonnetUsage,
+                sonnetReset: sonnetReset,
                 opusUsage: opusUsage,
+                opusReset: opusReset,
                 extraUsageEnabled: extraUsageEnabled,
                 authSource: "~/.local/share/opencode/auth.json"
             )

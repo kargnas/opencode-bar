@@ -32,7 +32,9 @@ struct DetailedUsage {
     
     // Claude model breakdown
     let sonnetUsage: Double?
+    let sonnetReset: Date?
     let opusUsage: Double?
+    let opusReset: Date?
     
     // Generic model breakdown (Gemini, Antigravity)
     let modelBreakdown: [String: Double]?
@@ -83,7 +85,9 @@ struct DetailedUsage {
         sevenDayUsage: Double? = nil,
         sevenDayReset: Date? = nil,
         sonnetUsage: Double? = nil,
+        sonnetReset: Date? = nil,
         opusUsage: Double? = nil,
+        opusReset: Date? = nil,
         modelBreakdown: [String: Double]? = nil,
         secondaryUsage: Double? = nil,
         secondaryReset: Date? = nil,
@@ -115,7 +119,9 @@ struct DetailedUsage {
         self.sevenDayUsage = sevenDayUsage
         self.sevenDayReset = sevenDayReset
         self.sonnetUsage = sonnetUsage
+        self.sonnetReset = sonnetReset
         self.opusUsage = opusUsage
+        self.opusReset = opusReset
         self.modelBreakdown = modelBreakdown
         self.secondaryUsage = secondaryUsage
         self.secondaryReset = secondaryReset
@@ -141,7 +147,7 @@ extension DetailedUsage: Codable {
         case dailyUsage, weeklyUsage, monthlyUsage, totalCredits, remainingCredits
         case limit, limitRemaining, resetPeriod
         case fiveHourUsage, fiveHourReset, sevenDayUsage, sevenDayReset
-        case sonnetUsage, opusUsage, modelBreakdown
+        case sonnetUsage, sonnetReset, opusUsage, opusReset, modelBreakdown
         case secondaryUsage, secondaryReset, primaryReset
         case creditsBalance, planType, extraUsageEnabled
         case sessions, messages, avgCostPerDay, email
@@ -164,7 +170,9 @@ extension DetailedUsage: Codable {
         sevenDayUsage = try container.decodeIfPresent(Double.self, forKey: .sevenDayUsage)
         sevenDayReset = try container.decodeIfPresent(Date.self, forKey: .sevenDayReset)
         sonnetUsage = try container.decodeIfPresent(Double.self, forKey: .sonnetUsage)
+        sonnetReset = try container.decodeIfPresent(Date.self, forKey: .sonnetReset)
         opusUsage = try container.decodeIfPresent(Double.self, forKey: .opusUsage)
+        opusReset = try container.decodeIfPresent(Date.self, forKey: .opusReset)
         modelBreakdown = try container.decodeIfPresent([String: Double].self, forKey: .modelBreakdown)
         secondaryUsage = try container.decodeIfPresent(Double.self, forKey: .secondaryUsage)
         secondaryReset = try container.decodeIfPresent(Date.self, forKey: .secondaryReset)
@@ -199,7 +207,9 @@ extension DetailedUsage: Codable {
         try container.encodeIfPresent(sevenDayUsage, forKey: .sevenDayUsage)
         try container.encodeIfPresent(sevenDayReset, forKey: .sevenDayReset)
         try container.encodeIfPresent(sonnetUsage, forKey: .sonnetUsage)
+        try container.encodeIfPresent(sonnetReset, forKey: .sonnetReset)
         try container.encodeIfPresent(opusUsage, forKey: .opusUsage)
+        try container.encodeIfPresent(opusReset, forKey: .opusReset)
         try container.encodeIfPresent(modelBreakdown, forKey: .modelBreakdown)
         try container.encodeIfPresent(secondaryUsage, forKey: .secondaryUsage)
         try container.encodeIfPresent(secondaryReset, forKey: .secondaryReset)
@@ -227,7 +237,8 @@ extension DetailedUsage {
             || limit != nil || limitRemaining != nil || resetPeriod != nil
             || fiveHourUsage != nil || fiveHourReset != nil
             || sevenDayUsage != nil || sevenDayReset != nil
-            || sonnetUsage != nil || opusUsage != nil
+            || sonnetUsage != nil || sonnetReset != nil
+            || opusUsage != nil || opusReset != nil
             || modelBreakdown != nil
             || secondaryUsage != nil || secondaryReset != nil || primaryReset != nil
             || creditsBalance != nil || planType != nil

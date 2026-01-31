@@ -117,6 +117,11 @@ extension StatusBarController {
                     let resetItem = NSMenuItem()
                     resetItem.view = createDisabledLabelView(text: "   Resets: \(formatter.string(from: reset))")
                     submenu.addItem(resetItem)
+                    
+                    let paceInfo = calculatePace(usage: fiveHour, resetTime: reset, windowHours: 5)
+                    let paceItem = NSMenuItem()
+                    paceItem.view = createPaceView(paceInfo: paceInfo)
+                    submenu.addItem(paceItem)
                 }
             }
             if let sevenDay = details.sevenDayUsage {
@@ -130,6 +135,11 @@ extension StatusBarController {
                     let resetItem = NSMenuItem()
                     resetItem.view = createDisabledLabelView(text: "   Resets: \(formatter.string(from: reset))")
                     submenu.addItem(resetItem)
+                    
+                    let paceInfo = calculatePace(usage: sevenDay, resetTime: reset, windowHours: 168)
+                    let paceItem = NSMenuItem()
+                    paceItem.view = createPaceView(paceInfo: paceInfo)
+                    submenu.addItem(paceItem)
                 }
             }
             submenu.addItem(NSMenuItem.separator())
@@ -137,11 +147,37 @@ extension StatusBarController {
                 let item = NSMenuItem()
                 item.view = createDisabledLabelView(text: String(format: "Sonnet (7d): %.0f%%", sonnet))
                 submenu.addItem(item)
+                if let reset = details.sonnetReset {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+                    formatter.timeZone = TimeZone.current
+                    let resetItem = NSMenuItem()
+                    resetItem.view = createDisabledLabelView(text: "   Resets: \(formatter.string(from: reset))")
+                    submenu.addItem(resetItem)
+                    
+                    let paceInfo = calculatePace(usage: sonnet, resetTime: reset, windowHours: 168)
+                    let paceItem = NSMenuItem()
+                    paceItem.view = createPaceView(paceInfo: paceInfo)
+                    submenu.addItem(paceItem)
+                }
             }
             if let opus = details.opusUsage {
                 let item = NSMenuItem()
                 item.view = createDisabledLabelView(text: String(format: "Opus (7d): %.0f%%", opus))
                 submenu.addItem(item)
+                if let reset = details.opusReset {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+                    formatter.timeZone = TimeZone.current
+                    let resetItem = NSMenuItem()
+                    resetItem.view = createDisabledLabelView(text: "   Resets: \(formatter.string(from: reset))")
+                    submenu.addItem(resetItem)
+                    
+                    let paceInfo = calculatePace(usage: opus, resetTime: reset, windowHours: 168)
+                    let paceItem = NSMenuItem()
+                    paceItem.view = createPaceView(paceInfo: paceInfo)
+                    submenu.addItem(paceItem)
+                }
             }
             if let extraUsage = details.extraUsageEnabled {
                 let item = NSMenuItem()
@@ -393,5 +429,170 @@ extension StatusBarController {
          
          debugLog("createCopilotHistorySubmenu: completed successfully")
          return submenu
+    }
+    
+    enum PaceStatus {
+        case onTrack
+        case slightlyFast
+        case tooFast
+        
+        var color: NSColor {
+            switch self {
+            case .onTrack: return .systemGreen
+            case .slightlyFast: return .systemOrange
+            case .tooFast: return .systemRed
+            }
+        }
+    }
+    
+    struct PaceInfo {
+        let elapsedRatio: Double
+        let usageRatio: Double
+        let predictedFinalUsage: Double
+        
+        var status: PaceStatus {
+            if usageRatio <= elapsedRatio {
+                return .onTrack
+            } else if predictedFinalUsage <= 130 {
+                return .slightlyFast
+            } else {
+                return .tooFast
+            }
+        }
+        
+        var predictText: String {
+            if predictedFinalUsage > 100 {
+                return String(format: "+%.0f%%", predictedFinalUsage)
+            } else {
+                return String(format: "%.0f%%", predictedFinalUsage)
+            }
+        }
+        
+        var statusText: String {
+            switch status {
+            case .onTrack: return "On Track"
+            case .slightlyFast: return "Slightly Fast"
+            case .tooFast: return "Too Fast"
+            }
+        }
+    }
+    
+    func calculatePace(usage: Double, resetTime: Date, windowHours: Int) -> PaceInfo {
+        let windowSeconds = Double(windowHours * 3600)
+        let now = Date()
+        let remainingSeconds = resetTime.timeIntervalSince(now)
+        let elapsedSeconds = windowSeconds - remainingSeconds
+        
+        let elapsedRatio = max(0, min(1, elapsedSeconds / windowSeconds))
+        let usageRatio = usage / 100.0
+        
+        let predictedFinalUsage: Double
+        if elapsedRatio > 0.01 {
+            predictedFinalUsage = min(999, (usageRatio / elapsedRatio) * 100.0)
+        } else {
+            predictedFinalUsage = usage
+        }
+        
+        return PaceInfo(
+            elapsedRatio: elapsedRatio,
+            usageRatio: usageRatio,
+            predictedFinalUsage: predictedFinalUsage
+        )
+    }
+    
+    func createPaceView(paceInfo: PaceInfo) -> NSView {
+        let menuWidth: CGFloat = 300
+        let itemHeight: CGFloat = 22
+        let leadingOffset: CGFloat = 14
+        let trailingMargin: CGFloat = 14
+        let statusDotSize: CGFloat = 8
+        let fontSize: CGFloat = 13
+        
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: itemHeight))
+        
+        let leftTextField = NSTextField(labelWithString: "Pace: \(paceInfo.statusText)")
+        leftTextField.font = NSFont.systemFont(ofSize: fontSize)
+        leftTextField.textColor = .disabledControlTextColor
+        leftTextField.frame = NSRect(x: leadingOffset, y: 3, width: 120, height: itemHeight - 6)
+        view.addSubview(leftTextField)
+        
+        let rabbitWidth: CGFloat = paceInfo.status == .tooFast ? 18 : 0
+        let dotWidth: CGFloat = statusDotSize + 4
+        let predictPrefix = "Predict: "
+        let predictPercent = paceInfo.predictText
+        
+        let rightAttributedString = NSMutableAttributedString()
+        let prefixAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: fontSize),
+            .foregroundColor: NSColor.disabledControlTextColor
+        ]
+        rightAttributedString.append(NSAttributedString(string: predictPrefix, attributes: prefixAttributes))
+        
+        let percentAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.boldSystemFont(ofSize: fontSize),
+            .foregroundColor: paceInfo.status.color
+        ]
+        rightAttributedString.append(NSAttributedString(string: predictPercent, attributes: percentAttributes))
+        
+        let rightTextWidth = rightAttributedString.size().width + 2
+        let rightTextX = menuWidth - trailingMargin - rabbitWidth - dotWidth - rightTextWidth
+        
+        let rightTextField = NSTextField(frame: NSRect(x: rightTextX, y: 3, width: rightTextWidth, height: itemHeight - 6))
+        rightTextField.attributedStringValue = rightAttributedString
+        rightTextField.isBezeled = false
+        rightTextField.isEditable = false
+        rightTextField.isSelectable = false
+        rightTextField.drawsBackground = false
+        rightTextField.alignment = .right
+        view.addSubview(rightTextField)
+        
+        let dotX = menuWidth - trailingMargin - rabbitWidth - statusDotSize
+        let dotY: CGFloat = (itemHeight - statusDotSize) / 2
+        let dotImageView = NSImageView(frame: NSRect(x: dotX, y: dotY, width: statusDotSize, height: statusDotSize))
+        if let dotImage = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Status") {
+            let config = NSImage.SymbolConfiguration(pointSize: statusDotSize, weight: .regular)
+            let configuredImage = dotImage.withSymbolConfiguration(config)
+            dotImageView.image = configuredImage
+            dotImageView.contentTintColor = paceInfo.status.color
+        }
+        view.addSubview(dotImageView)
+        
+        if paceInfo.status == .tooFast {
+            let rabbitView = createRunningRabbitView()
+            rabbitView.frame = NSRect(x: menuWidth - trailingMargin - 14, y: 3, width: 14, height: 16)
+            view.addSubview(rabbitView)
+        }
+        
+        return view
+    }
+    
+    func createRunningRabbitView() -> NSView {
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 30, height: 16))
+        view.wantsLayer = true
+        
+        let rabbitLabel = NSTextField(labelWithString: "🐰")
+        rabbitLabel.font = NSFont.systemFont(ofSize: 11)
+        rabbitLabel.frame = NSRect(x: 0, y: 0, width: 20, height: 16)
+        rabbitLabel.wantsLayer = true
+        view.addSubview(rabbitLabel)
+        
+        let bounceAnimation = CAKeyframeAnimation(keyPath: "position.y")
+        bounceAnimation.values = [0, -3, 0, -2, 0]
+        bounceAnimation.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
+        bounceAnimation.duration = 0.4
+        bounceAnimation.repeatCount = .infinity
+        bounceAnimation.isAdditive = true
+        
+        let hopAnimation = CAKeyframeAnimation(keyPath: "position.x")
+        hopAnimation.values = [0, 3, 0]
+        hopAnimation.keyTimes = [0, 0.5, 1.0]
+        hopAnimation.duration = 0.4
+        hopAnimation.repeatCount = .infinity
+        hopAnimation.isAdditive = true
+        
+        rabbitLabel.layer?.add(bounceAnimation, forKey: "bounce")
+        rabbitLabel.layer?.add(hopAnimation, forKey: "hop")
+        
+        return view
     }
 }
