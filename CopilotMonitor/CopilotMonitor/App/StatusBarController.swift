@@ -842,6 +842,16 @@ final class StatusBarController: NSObject {
               let freeItem = NSMenuItem()
               freeItem.view = createDisabledLabelView(text: "Free Quota: \(limit)")
               submenu.addItem(freeItem)
+              
+              submenu.addItem(NSMenuItem.separator())
+              let authItem = NSMenuItem()
+              authItem.view = createDisabledLabelView(
+                  text: "Token From: Browser Cookies (Chrome/Brave/Arc/Edge)",
+                  icon: NSImage(systemSymbolName: "key", accessibilityDescription: "Auth Source"),
+                  multiline: true
+              )
+              submenu.addItem(authItem)
+              
               quotaItem.submenu = submenu
               
               menu.insertItem(quotaItem, at: insertIndex)
