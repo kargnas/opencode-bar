@@ -35,7 +35,7 @@ jobs:
         id: get_tag
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
           echo "Latest tag: $LATEST_TAG"
       
       - name: Calculate New Version
@@ -62,8 +62,8 @@ jobs:
           esac
           
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "version_number=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_number=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
           echo "New version: $NEW_VERSION"
       
       - name: Setup Xcode
@@ -77,18 +77,18 @@ jobs:
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
           
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
           
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           
-          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
           
           echo "Certificate imported successfully"
       
@@ -108,7 +108,7 @@ jobs:
             -project CopilotMonitor.xcodeproj \
             -scheme CopilotMonitor \
             -configuration Release \
-            -archivePath $RUNNER_TEMP/CopilotMonitor.xcarchive \
+            -archivePath "$RUNNER_TEMP/CopilotMonitor.xcarchive" \
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual
@@ -116,8 +116,8 @@ jobs:
       - name: Export Archive
         run: |
           xcodebuild -exportArchive \
-            -archivePath $RUNNER_TEMP/CopilotMonitor.xcarchive \
-            -exportPath $RUNNER_TEMP/export \
+            -archivePath "$RUNNER_TEMP/CopilotMonitor.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist ExportOptions.plist
       
       - name: Verify Code Signing
@@ -131,7 +131,7 @@ jobs:
       
       - name: Create ZIP for Notarization
         run: |
-          cd $RUNNER_TEMP/export
+          cd "$RUNNER_TEMP/export"
           ditto -c -k --keepParent CopilotMonitor.app CopilotMonitor.zip
           echo "Created ZIP for notarization"
       
@@ -142,7 +142,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           echo "Submitting app for notarization..."
-          xcrun notarytool submit $RUNNER_TEMP/export/CopilotMonitor.zip \
+          xcrun notarytool submit "$RUNNER_TEMP/export/CopilotMonitor.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
@@ -247,11 +247,11 @@ jobs:
           DMG_NAME="OpenCodeUsageMonitor-${VERSION}.dmg"
           DOWNLOAD_URL="https://github.com/kargnas/copilot-usage-monitor/releases/download/${VERSION}/${DMG_NAME}"
           
-          echo "$SPARKLE_PRIVATE_KEY" > $RUNNER_TEMP/sparkle_key
+          echo "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_key"
           
           # Extract just the signature string from the output
           # Output format: sparkle:edSignature="<SIG>" length="<LEN>"
-          FULL_OUTPUT=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file $RUNNER_TEMP/sparkle_key)
+          FULL_OUTPUT=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file "$RUNNER_TEMP/sparkle_key")
           SIGNATURE=$(echo "$FULL_OUTPUT" | awk -F '"' '{print $2}')
           echo "Sparkle EdDSA signature: $SIGNATURE"
           
@@ -280,14 +280,14 @@ jobs:
           </rss>
           EOF
           
-          rm -f $RUNNER_TEMP/sparkle_key
+          rm -f "$RUNNER_TEMP/sparkle_key"
           echo "Appcast.xml generated successfully"
           cat appcast.xml
       
       - name: Cleanup Keychain
         if: always()
         run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
       
       - name: Create Tag
         run: |

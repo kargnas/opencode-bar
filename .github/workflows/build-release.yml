@@ -25,18 +25,18 @@ jobs:
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
           
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
           
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           
-          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
       
       - name: Build App (Unsigned - for branch push)
         if: "!startsWith(github.ref, 'refs/tags/v')"
@@ -61,7 +61,7 @@ jobs:
             -project CopilotMonitor.xcodeproj \
             -scheme CopilotMonitor \
             -configuration Release \
-            -archivePath $RUNNER_TEMP/CopilotMonitor.xcarchive \
+            -archivePath "$RUNNER_TEMP/CopilotMonitor.xcarchive" \
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual
@@ -76,8 +76,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           xcodebuild -exportArchive \
-            -archivePath $RUNNER_TEMP/CopilotMonitor.xcarchive \
-            -exportPath $RUNNER_TEMP/export \
+            -archivePath "$RUNNER_TEMP/CopilotMonitor.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist ExportOptions.plist
       
       - name: Verify Code Signing
@@ -93,7 +93,7 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          cd $RUNNER_TEMP/export
+          cd "$RUNNER_TEMP/export"
           ditto -c -k --keepParent CopilotMonitor.app CopilotMonitor.zip
           
           xcrun notarytool submit CopilotMonitor.zip \
@@ -193,10 +193,10 @@ jobs:
           DMG_NAME="OpenCodeUsageMonitor-${VERSION}.dmg"
           DOWNLOAD_URL="https://github.com/kargnas/copilot-usage-monitor/releases/download/${VERSION}/${DMG_NAME}"
           
-          echo "$SPARKLE_PRIVATE_KEY" > $RUNNER_TEMP/sparkle_key
+          echo "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_key"
           # Extract just the signature string from the output
           # Output format: sparkle:edSignature="<SIG>" length="<LEN>"
-          FULL_OUTPUT=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file $RUNNER_TEMP/sparkle_key)
+          FULL_OUTPUT=$(./sparkle/bin/sign_update "$DMG_NAME" --ed-key-file "$RUNNER_TEMP/sparkle_key")
           SIGNATURE=$(echo "$FULL_OUTPUT" | awk -F '"' '{print $2}')
           DMG_SIZE=$(stat -f%z "$DMG_NAME")
           
@@ -223,12 +223,12 @@ jobs:
           </rss>
           EOF
           
-          rm -f $RUNNER_TEMP/sparkle_key
+          rm -f "$RUNNER_TEMP/sparkle_key"
       
       - name: Cleanup Keychain
         if: always() && startsWith(github.ref, 'refs/tags/v')
         run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
       
       - name: Upload Artifact (Branch Build)
         if: "!startsWith(github.ref, 'refs/tags/v')"
@@ -262,7 +262,7 @@ jobs:
       
       - name: Get Version
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
       
       - name: Create Release
         uses: softprops/action-gh-release@v2
