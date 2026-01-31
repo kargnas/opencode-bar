@@ -28,6 +28,15 @@ final class OpenCodeZenProvider: ProviderProtocol {
         let modelCosts: [String: Double]
     }
     
+    /// Cache structure for daily history
+    private struct DailyHistoryCache: Codable {
+        let date: Date
+        let cost: Double
+        let fetchedAt: Date
+    }
+    
+    private let cacheKey = "opencodezen.dailyhistory.cache"
+    
     // MARK: - ProviderProtocol
     
     func fetch() async throws -> ProviderResult {
@@ -39,6 +48,8 @@ final class OpenCodeZenProvider: ProviderProtocol {
         let output = try await runOpenCodeStats(days: 7)
         let stats = try parseStats(output)
         
+        let dailyHistory = await fetchDailyHistory()
+        
         let monthlyLimit = 1000.0
         let utilization = min((stats.totalCost / monthlyLimit) * 100, 100)
         
@@ -49,7 +60,7 @@ final class OpenCodeZenProvider: ProviderProtocol {
             sessions: stats.sessions,
             messages: stats.messages,
             avgCostPerDay: stats.avgCostPerDay,
-            dailyHistory: [],
+            dailyHistory: dailyHistory,
             monthlyCost: stats.totalCost
         )
         
@@ -57,6 +68,103 @@ final class OpenCodeZenProvider: ProviderProtocol {
             usage: .payAsYouGo(utilization: utilization, cost: stats.totalCost, resetsAt: nil),
             details: details
         )
+    }
+    
+    private func fetchDailyHistory() async -> [DailyUsage] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today) else {
+            return []
+        }
+        
+        // Load cached data for days older than 2 days ago
+        var cachedData: [Date: Double] = [:]
+        let cache = loadHistoryCache()
+        for item in cache {
+            let itemDate = calendar.startOfDay(for: item.date)
+            if itemDate < twoDaysAgo {
+                cachedData[itemDate] = item.cost
+            }
+        }
+        
+        // Only fetch today and yesterday (days 1 and 2)
+        var cumulativeCosts: [Int: Double] = [:]
+        await withTaskGroup(of: (Int, Double?).self) { group in
+            for days in 1...2 {
+                group.addTask {
+                    do {
+                        let output = try await self.runOpenCodeStats(days: days)
+                        if let cost = self.parseTotalCost(output) {
+                            return (days, cost)
+                        }
+                    } catch {
+                        logger.warning("Failed to fetch stats for \(days) days: \(error.localizedDescription)")
+                    }
+                    return (days, nil)
+                }
+            }
+            for await (days, cost) in group {
+                if let cost = cost {
+                    cumulativeCosts[days] = cost
+                }
+            }
+        }
+        
+        // Build daily history and update cache
+        var dailyHistory: [DailyUsage] = []
+        var newCache: [DailyHistoryCache] = []
+        
+        for day in 1...7 {
+            guard let date = calendar.date(byAdding: .day, value: -(day - 1), to: today) else { continue }
+            let dateStart = calendar.startOfDay(for: date)
+            var dailyCost: Double
+            
+            if day <= 2 {
+                // Today/yesterday: calculate from fresh data
+                let currentCumulative = cumulativeCosts[day] ?? 0
+                let previousCumulative = day > 1 ? (cumulativeCosts[day - 1] ?? 0) : 0
+                dailyCost = max(0, currentCumulative - previousCumulative)
+                newCache.append(DailyHistoryCache(date: dateStart, cost: dailyCost, fetchedAt: Date()))
+            } else {
+                // Older days: load from cache
+                dailyCost = cachedData[dateStart] ?? 0
+                if let existingCacheItem = cache.first(where: { calendar.startOfDay(for: $0.date) == dateStart }) {
+                    newCache.append(existingCacheItem)
+                }
+            }
+            
+            dailyHistory.append(DailyUsage(
+                date: date,
+                includedRequests: 0,
+                billedRequests: 0,
+                grossAmount: dailyCost,
+                billedAmount: dailyCost
+            ))
+        }
+        
+        saveHistoryCache(newCache)
+        return dailyHistory
+    }
+    
+    private func parseTotalCost(_ output: String) -> Double? {
+        let totalCostPattern = #"│Total Cost\s+\$([0-9.]+)"#
+        guard let match = output.range(of: totalCostPattern, options: .regularExpression) else {
+            return nil
+        }
+        let costStr = String(output[match])
+            .replacingOccurrences(of: #"│Total Cost\s+\$"#, with: "", options: .regularExpression)
+        return Double(costStr)
+    }
+    
+    private func loadHistoryCache() -> [DailyHistoryCache] {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return [] }
+        return (try? JSONDecoder().decode([DailyHistoryCache].self, from: data)) ?? []
+    }
+    
+    private func saveHistoryCache(_ cache: [DailyHistoryCache]) {
+        if let data = try? JSONEncoder().encode(cache) {
+            UserDefaults.standard.set(data, forKey: cacheKey)
+        }
     }
     
     // MARK: - Private Helpers
