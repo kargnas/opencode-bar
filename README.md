@@ -1,11 +1,11 @@
-# Opencode Providers Monitor
+# OpenCode Usage Monitor
 
 <p align="center">
-  <img src="docs/screenshot.jpeg" alt="Opencode Providers Monitor Screenshot" width="480">
+  <img src="docs/screenshot2.png" alt="OpenCode Usage Monitor Screenshot" width="480">
 </p>
 
 <p align="center">
-  <strong>Monitor multiple AI provider usage (Copilot, Claude, Codex, Gemini CLI, OpenRouter, OpenCode Zen, and more) in real-time from the macOS menu bar.</strong>
+  <strong>Automatically monitor all your AI provider usage from OpenCode in real-time from the macOS menu bar.</strong>
 </p>
 
 <p align="center">
@@ -21,27 +21,44 @@
 
 ---
 
+## Overview
+
+**OpenCode Usage Monitor** automatically detects and monitors all AI providers registered in your [OpenCode](https://opencode.ai) configuration. No manual setup required - just install and see your usage across all providers in one unified dashboard.
+
+### Supported Providers (Auto-detected from OpenCode)
+
+| Provider | Type | Key Metrics |
+|----------|------|-------------|
+| **Claude** | Quota-based | 5h/7d usage windows, Sonnet/Opus breakdown |
+| **Codex** | Quota-based | Primary/Secondary quotas, plan type |
+| **Gemini CLI** | Quota-based | Per-model quotas, multi-account support |
+| **OpenRouter** | Pay-as-you-go | Credits balance, daily/weekly/monthly cost |
+| **OpenCode Zen** | Pay-as-you-go | Daily history (30 days), model breakdown |
+| **Antigravity** | Pay-as-you-go | Local language server monitoring |
+| **GitHub Copilot** | Quota-based | Daily history, overage tracking, EOM prediction |
+
 ## Features
 
-### Multi-Provider Support
-- **8 AI Providers**: GitHub Copilot, Anthropic Claude, OpenAI Codex, Google Gemini CLI, OpenRouter, OpenCode, OpenCode Zen, Antigravity
-- **Unified Dashboard**: View all providers in a single menu dropdown
-- **Provider Toggle**: Enable/disable individual providers in Settings
-- **Smart Categorization**: 
-  - Pay-as-you-go providers (OpenRouter, OpenCode, OpenCode Zen, Antigravity) show utilization %
-  - Quota-based providers (Copilot, Claude, Codex, Gemini CLI) show remaining quota %
+### Automatic Provider Detection
+- **Zero Configuration**: Reads your `~/.local/share/opencode/auth.json` automatically
+- **Dynamic Updates**: New providers appear as you add them to OpenCode
+- **Smart Categorization**: Pay-as-you-go vs Quota-based providers displayed separately
 
-### Monitoring & Alerts
-- **Real-time Menu Bar Display**: View current usage and limits directly from the menu bar icon
-- **Visual Progress Indicator**: Color changes based on usage (green → yellow → orange → red)
-- **Quota Alerts**: Red-tinted icons when remaining quota <20%
-- **Usage History & Prediction**: Track daily usage and predict end-of-month totals with estimated costs (Copilot only)
-- **Add-on Cost Tracking**: Shows additional costs when exceeding the limit (Copilot only)
+### Real-time Monitoring
+- **Menu Bar Dashboard**: View all provider usage at a glance
+- **Visual Indicators**: Color-coded progress (green → yellow → orange → red)
+- **Quota Alerts**: Warning icons when remaining quota < 20%
+- **Detailed Submenus**: Click any provider for in-depth metrics
+
+### Usage History & Predictions (Copilot)
+- **Daily Tracking**: View request counts and overage costs
+- **EOM Prediction**: Estimates end-of-month totals using weighted averages
+- **Add-on Cost Tracking**: Shows additional costs when exceeding limits
 
 ### Convenience
-- **Auto Refresh**: Configurable auto-update intervals from 10 seconds to 30 minutes
-- **Launch at Login**: Option to automatically start on macOS login
-- **Secure Authentication**: Uses existing OpenCode auth tokens (no additional login required)
+- **Auto Refresh**: Configurable intervals (10 seconds to 30 minutes)
+- **Launch at Login**: Start automatically with macOS
+- **Parallel Fetching**: All providers update simultaneously for speed
 
 ## Installation
 
@@ -51,141 +68,73 @@ Download the latest `.dmg` file from the [**Releases**](https://github.com/kargn
 
 > **Note**: If you see a "App is damaged" error, run this command in Terminal:
 > ```bash
-> xattr -cr /Applications/OpencodeProvidersMonitor.app
+> xattr -cr "/Applications/OpenCode Usage Monitor.app"
 > ```
 
-### Build from Source (Xcode)
+### Build from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/kargnas/copilot-usage-monitor.git
 cd copilot-usage-monitor
 
-# Open in Xcode
-open CopilotMonitor/CopilotMonitor.xcodeproj
+# Build and run
+xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj \
+  -scheme CopilotMonitor -configuration Debug build
 
-# Build (⌘B) and Run (⌘R) in Xcode
-```
-
-### Build from Source (CLI)
-
-For development without Xcode GUI (e.g., using VS Code, Cursor, or other editors):
-
-```bash
-# Kill existing process, build, and run
-pkill -x OpencodeProvidersMonitor; xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug build && open ~/Library/Developer/Xcode/DerivedData/CopilotMonitor-*/Build/Products/Debug/OpencodeProvidersMonitor.app
-```
-
-Or step by step:
-
-```bash
-# 1. Kill existing process (if running)
-pkill -x OpencodeProvidersMonitor
-
-# 2. Build
-xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug build
-
-# 3. Run
-open ~/Library/Developer/Xcode/DerivedData/CopilotMonitor-*/Build/Products/Debug/OpencodeProvidersMonitor.app
+# Open the app
+open ~/Library/Developer/Xcode/DerivedData/CopilotMonitor-*/Build/Products/Debug/*.app
 ```
 
 **Requirements:**
 - macOS 13.0+
-- Xcode 15.0+ (Command Line Tools required)
-- Swift 5.9+
+- Xcode 15.0+ (for building from source)
+- [OpenCode](https://opencode.ai) installed with authenticated providers
 
 ## Usage
 
-### Initial Setup
-
-1. **Launch the app**: Run `OpencodeProvidersMonitor.app`
-2. **Configure providers**: 
-   - For **Copilot**: Click "Sign In" and log in with your GitHub account
-   - For **Claude, Codex, Gemini CLI**: Ensure you have OpenCode installed with valid auth tokens at `~/.local/share/opencode/auth.json`
-3. **Enable/Disable providers**: Go to Settings → Enabled Providers and toggle providers as needed
-4. **Monitor**: Check your real-time usage from the menu bar
+1. **Install OpenCode**: Make sure you have OpenCode installed and authenticated with your providers
+2. **Launch the app**: Run OpenCode Usage Monitor
+3. **View usage**: Click the menu bar icon to see all your provider usage
+4. **GitHub Copilot** (optional): Click "Sign In" to add Copilot monitoring via GitHub OAuth
 
 ### Menu Structure
 
 ```
 ─────────────────────────────
-[Copilot Usage View]
-─────────────────────────────
 Pay-as-you-go
-  Codex          45.2%
+  OpenRouter       $37.42    ▸
+  OpenCode Zen     $0.19     ▸
 ─────────────────────────────
 Quota Status
-  Claude         5% ⚠️
-  Copilot        78%
-  Gemini CLI     92%
+  Copilot          0%        ▸
+  Claude           60%       ▸
+  Codex            100%      ▸
+  Gemini CLI (#1)  100%      ▸
 ─────────────────────────────
-Usage History ▸
-Sign In
-Reset Login
+Predicted EOM: $451
+─────────────────────────────
 Refresh (⌘R)
-Check for Updates...
-Auto Refresh ▸
-Open Billing (⌘B)
+Auto Refresh              ▸
+Settings                  ▸
 ─────────────────────────────
-Settings
-  Enabled Providers ▸
-  Launch at Login
-─────────────────────────────
-Version X.X.X
+Version 2.0.0
 Quit (⌘Q)
 ```
 
-### Menu Options
-
-| Menu Item | Description | Shortcut |
-|-----------|-------------|----------|
-| Pay-as-you-go | Shows utilization % for pay-as-you-go providers | - |
-| Quota Status | Shows remaining quota % for quota-based providers | - |
-| Usage History | View daily history and end-of-month predictions (Copilot only) | - |
-| Refresh | Manually refresh usage data for all enabled providers | `⌘R` |
-| Auto Refresh | Set auto-refresh interval (10s~30min) | - |
-| Open Billing | Open GitHub billing page | `⌘B` |
-| Enabled Providers | Toggle individual providers on/off | - |
-| Launch at Login | Toggle auto-start on login | - |
-| Quit | Quit the app | `⌘Q` |
-
-### Usage History & Prediction
-
-The app tracks your daily usage to provide smart predictions:
-
-- **📈 Predicted EOM**: Estimates your total requests by the end of the month based on recent patterns
-- **💸 Predicted Add-on**: Warns you if you're likely to exceed your plan limit and incur extra costs
-- **⚙️ Prediction Period**: Configure the prediction algorithm to use the last 7, 14, or 21 days of data (weighted average)
-- **Daily Log**: View your request count for the past 7 days
-
 ## How It Works
 
-### Provider Data Sources
+1. **Token Discovery**: Reads authentication tokens from OpenCode's `auth.json`
+2. **Parallel Fetching**: Queries all provider APIs simultaneously
+3. **Smart Caching**: Falls back to cached data on network errors
+4. **Graceful Degradation**: Shows available providers even if some fail
 
-| Provider | Authentication | API Endpoint | Data Format |
-|----------|---------------|--------------|-------------|
-| **Copilot** | GitHub OAuth (WebView) | `/settings/billing/copilot_usage_card` | Quota-based with overage |
-| **Claude** | OpenCode auth token | `https://api.anthropic.com/api/oauth/usage` | Quota-based (7-day window) |
-| **Codex** | OpenCode auth token | `https://chatgpt.com/backend-api/wham/usage` | Quota-based utilization |
-| **Gemini CLI** | OpenCode OAuth token | `https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` | Quota-based (per-model buckets) |
-| **OpenRouter** | OpenCode auth token | `https://openrouter.ai/api/v1/credits` | Pay-as-you-go with credits |
-| **+ 3 more** | OpenCode auth tokens | Various endpoints | Pay-as-you-go models |
+### Privacy & Security
 
-### Architecture
-
-1. **Protocol-based Design**: All providers implement `ProviderProtocol` for unified interface
-2. **Parallel Fetching**: Uses Swift Concurrency to fetch all providers simultaneously (10s timeout per provider)
-3. **Graceful Degradation**: Returns partial results if some providers fail
-4. **Caching**: Uses cached data when network errors occur
-
-> **Note**: This app uses internal/unofficial APIs for some providers. Functionality may change based on provider updates.
-
-## Privacy & Security
-
-- **Local Storage**: All data is stored locally only
-- **No Third-party Servers**: Communicates directly with provider APIs
-- **Token Security**: Uses existing OpenCode auth tokens (read-only access)
-- **OAuth Authentication**: GitHub Copilot uses OAuth session without storing passwords
+- **Local Only**: All data stays on your machine
+- **No Third-party Servers**: Direct communication with provider APIs
+- **Read-only Access**: Uses existing OpenCode tokens (no additional permissions)
+- **Secure Storage**: GitHub Copilot uses OAuth session without storing passwords
 
 ## Contributing
 
@@ -203,11 +152,11 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## Related
 
+- [OpenCode](https://opencode.ai) - The AI coding assistant that powers this monitor
 - [GitHub Copilot](https://github.com/features/copilot)
-- [Copilot Billing Documentation](https://docs.github.com/en/billing/managing-billing-for-github-copilot)
 
 ---
 
 <p align="center">
-  Made with ❤️ for AI power users
+  Made with tiredness for AI power users
 </p>

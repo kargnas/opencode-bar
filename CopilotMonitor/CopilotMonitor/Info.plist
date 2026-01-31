@@ -5,13 +5,13 @@
 	<key>CFBundleIdentifier</key>
 	<string>com.copilotmonitor.CopilotMonitor</string>
 	<key>CFBundleName</key>
-	<string>OpencodeProvidersMonitor</string>
+	<string>OpenCodeUsageMonitor</string>
 	<key>CFBundleDisplayName</key>
-	<string>Opencode Providers Monitor</string>
+	<string>OpenCode Usage Monitor</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.0.0-dev</string>
+	<string>2.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>2.0.0</string>
 	<key>LSUIElement</key>
