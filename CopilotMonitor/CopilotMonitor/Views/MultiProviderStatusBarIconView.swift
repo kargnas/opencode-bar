@@ -6,12 +6,7 @@ struct ProviderAlert {
     let remainingPercent: Double
 }
 
-extension ProviderAlert {
-    init(identifier: ProviderIdentifier, remainingPercent: Double) {
-        self.identifier = identifier
-        self.remainingPercent = remainingPercent
-    }
-}
+
 
 /// Multi-provider status bar icon view
 /// Displays: [$XXX 🔴ClaudeIcon 5% 🔴GeminiIcon 8%]

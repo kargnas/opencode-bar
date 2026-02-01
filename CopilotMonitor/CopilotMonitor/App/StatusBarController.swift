@@ -202,6 +202,11 @@ final class StatusBarController: NSObject {
         statusItem.menu = menu
     }
 
+    /// Attach the existing menu to an external NSStatusItem (for MenuBarExtraAccess bridge)
+    func attachTo(_ statusItem: NSStatusItem) {
+        statusItem.menu = self.menu
+    }
+
     private func updateRefreshIntervalMenu() {
         for item in refreshIntervalMenu.items {
             item.state = (item.tag == refreshInterval.rawValue) ? .on : .off
@@ -1281,6 +1286,7 @@ final class StatusBarController: NSObject {
         let webView = AuthManager.shared.webView
 
         Task { @MainActor in
+            // @TODO: 각 날짜별 requests/premium requests history 는 period=3, 5 둘다 호출해서 결합해야함. (달이 넘어가서 1일이 되면 0으로 초기화됨)
             let js = """
             return await (async function() {
                 try {
