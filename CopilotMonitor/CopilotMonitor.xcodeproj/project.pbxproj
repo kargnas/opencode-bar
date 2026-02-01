@@ -67,9 +67,17 @@
 		CLIPROVMGR11111111111111 /* CLIProviderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CLIPROVMGR22222222222222 /* CLIProviderManager.swift */; };
 		CLICOPILOT11111111111111 /* CopilotCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CLICOPILOT22222222222222 /* CopilotCLIProvider.swift */; };
 		CLIHISTORY11111111111111 /* CopilotHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1085A77EF4A58E5B5EC71B /* CopilotHistoryService.swift */; };
+		CLICOPY111111111111111111 /* opencodebar-cli in Embed CLI */ = {isa = PBXBuildFile; fileRef = CLI5555555555555555555555 /* opencodebar-cli */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		CLIPROXY11111111111111111 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B44444444444444444444444 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CLI8888888888888888888888;
+			remoteInfo = "opencodebar-cli";
+		};
 		TNNNNNNNNNNNNNNNNNNNNNNN /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = B44444444444444444444444 /* Project object */;
@@ -78,6 +86,20 @@
 			remoteInfo = CopilotMonitor;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CLICOPYPH11111111111111111 /* Embed CLI */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/MacOS;
+			dstSubfolderSpec = 1;
+			files = (
+				CLICOPY111111111111111111 /* opencodebar-cli in Embed CLI */,
+			);
+			name = "Embed CLI";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		CLI2222222222222222222222 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -367,10 +389,12 @@
 				B22222222222222222222222 /* Sources */,
 				AAAAAAAAAAAAAAAAAAAAAAAA /* Frameworks */,
 				B33333333333333333333333 /* Resources */,
+				CLICOPYPH11111111111111111 /* Embed CLI */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CLIDEP1111111111111111111 /* PBXTargetDependency */,
 			);
 			name = CopilotMonitor;
 			packageProductDependencies = (
@@ -565,6 +589,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		CLIDEP1111111111111111111 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CLI8888888888888888888888 /* opencodebar-cli */;
+			targetProxy = CLIPROXY11111111111111111 /* PBXContainerItemProxy */;
+		};
 		TKKKKKKKKKKKKKKKKKKKKKKK /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = AFFFFFFFFFFFFFFFFFFFFF /* CopilotMonitor */;
