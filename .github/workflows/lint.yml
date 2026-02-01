@@ -31,6 +31,7 @@ jobs:
             CHANGED_FILES=$(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files[].path | select(endswith(".swift"))' | tr '\n' ' ')
             if [ -n "$CHANGED_FILES" ]; then
               echo "Linting changed files: $CHANGED_FILES"
+              # shellcheck disable=SC2086
               swiftlint lint --strict --reporter github-actions-logging $CHANGED_FILES
             else
               echo "No Swift files changed"
