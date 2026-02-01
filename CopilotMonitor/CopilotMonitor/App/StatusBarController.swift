@@ -36,6 +36,8 @@ final class StatusBarController: NSObject {
      private var providerResults: [ProviderIdentifier: ProviderResult] = [:]
      private var loadingProviders: Set<ProviderIdentifier> = []
      private var enabledProvidersMenu: NSMenu!
+     private var lastProviderErrors: [ProviderIdentifier: String] = [:]
+     private var viewErrorDetailsItem: NSMenuItem!
 
     private var usagePredictor: UsagePredictor {
         UsagePredictor(weights: predictionPeriod.weights)
@@ -201,6 +203,14 @@ final class StatusBarController: NSObject {
          quitItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: "Quit")
          quitItem.target = self
          menu.addItem(quitItem)
+         
+         menu.addItem(NSMenuItem.separator())
+         
+         viewErrorDetailsItem = NSMenuItem(title: "View Error Details...", action: #selector(viewErrorDetailsClicked), keyEquivalent: "e")
+         viewErrorDetailsItem.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "View Error Details")
+         viewErrorDetailsItem.target = self
+         viewErrorDetailsItem.isHidden = true
+         menu.addItem(viewErrorDetailsItem)
          
          statusItem?.menu = menu
          logMenuStructure()
@@ -631,11 +641,11 @@ final class StatusBarController: NSObject {
 
            logger.info("🟡 [StatusBarController] fetchMultiProviderData: Calling ProviderManager.fetchAll()")
            debugLog("🟡 fetchMultiProviderData: calling ProviderManager.fetchAll()")
-           let results = await ProviderManager.shared.fetchAll()
-           debugLog("🟢 fetchMultiProviderData: fetchAll returned \(results.count) results")
-           logger.info("🟢 [StatusBarController] fetchMultiProviderData: fetchAll() returned \(results.count) results")
+           let fetchResult = await ProviderManager.shared.fetchAll()
+           debugLog("🟢 fetchMultiProviderData: fetchAll returned \(fetchResult.results.count) results, \(fetchResult.errors.count) errors")
+           logger.info("🟢 [StatusBarController] fetchMultiProviderData: fetchAll() returned \(fetchResult.results.count) results, \(fetchResult.errors.count) errors")
 
-           let filteredResults = results.filter { identifier, _ in
+           let filteredResults = fetchResult.results.filter { identifier, _ in
                isProviderEnabled(identifier) && identifier != .copilot
            }
            let filteredNames = filteredResults.keys.map { $0.displayName }.joined(separator: ", ")
@@ -650,6 +660,19 @@ final class StatusBarController: NSObject {
            logger.debug("🟢 [StatusBarController] loadingProviders after clear: \(remainingLoading)")
 
            self.providerResults = filteredResults
+           
+           let filteredErrors = fetchResult.errors.filter { identifier, _ in
+               isProviderEnabled(identifier) && identifier != .copilot
+           }
+           self.lastProviderErrors = filteredErrors
+           self.viewErrorDetailsItem.isHidden = filteredErrors.isEmpty
+           debugLog("📍 fetchMultiProviderData: viewErrorDetailsItem.isHidden = \(filteredErrors.isEmpty)")
+           
+           if !filteredErrors.isEmpty {
+               let errorNames = filteredErrors.keys.map { $0.displayName }.joined(separator: ", ")
+               debugLog("🔴 fetchMultiProviderData: errors from: \(errorNames)")
+               logger.warning("🔴 [StatusBarController] Errors from providers: \(errorNames)")
+           }
            debugLog("🟢 fetchMultiProviderData: calling updateMultiProviderMenu")
            logger.debug("🟢 [StatusBarController] providerResults updated, calling updateMultiProviderMenu()")
            self.updateMultiProviderMenu()
@@ -1253,6 +1276,116 @@ final class StatusBarController: NSObject {
     @objc private func openGitHub() {
         logger.info("Opening GitHub repository")
         if let url = URL(string: "https://github.com/kargnas/opencode-bar") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    @objc private func viewErrorDetailsClicked() {
+        logger.info("⌨️ [Keyboard] ⌘E View Error Details triggered")
+        debugLog("⌨️ viewErrorDetailsClicked: ⌘E shortcut activated")
+        showErrorDetailsAlert()
+    }
+    
+    private func showErrorDetailsAlert() {
+        guard !lastProviderErrors.isEmpty else {
+            debugLog("showErrorDetailsAlert: no errors to show")
+            return
+        }
+        
+        NSApp.activate(ignoringOtherApps: true)
+        
+        var errorLogText = "Provider Errors:\n"
+        errorLogText += String(repeating: "─", count: 40) + "\n\n"
+        
+        for (identifier, errorMessage) in lastProviderErrors.sorted(by: { $0.key.displayName < $1.key.displayName }) {
+            errorLogText += "[\(identifier.displayName)]\n"
+            errorLogText += "  \(errorMessage)\n\n"
+        }
+        
+        errorLogText += String(repeating: "─", count: 40) + "\n"
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+        errorLogText += "Time: \(dateFormatter.string(from: Date()))\n"
+        errorLogText += "App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")\n"
+        
+        let alert = NSAlert()
+        alert.messageText = "Provider Errors Detected"
+        alert.informativeText = "Some providers failed to fetch data. You can copy the error log and report this issue on GitHub."
+        alert.alertStyle = .warning
+        
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 450, height: 200))
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        
+        let textView = NSTextView(frame: scrollView.bounds)
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        textView.string = errorLogText
+        textView.autoresizingMask = [.width, .height]
+        
+        scrollView.documentView = textView
+        alert.accessoryView = scrollView
+        
+        alert.addButton(withTitle: "Copy & Report on GitHub")
+        alert.addButton(withTitle: "Copy Log Only")
+        alert.addButton(withTitle: "Close")
+        
+        let response = alert.runModal()
+        
+        switch response {
+        case .alertFirstButtonReturn:
+            debugLog("showErrorDetailsAlert: user chose Copy & Report on GitHub")
+            copyToClipboard(errorLogText)
+            openGitHubNewIssue()
+            
+        case .alertSecondButtonReturn:
+            debugLog("showErrorDetailsAlert: user chose Copy Log Only")
+            copyToClipboard(errorLogText)
+            showCopiedConfirmation()
+            
+        default:
+            debugLog("showErrorDetailsAlert: user closed")
+        }
+    }
+    
+    private func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        logger.info("Error log copied to clipboard")
+    }
+    
+    private func showCopiedConfirmation() {
+        let confirmAlert = NSAlert()
+        confirmAlert.messageText = "Copied!"
+        confirmAlert.informativeText = "Error log has been copied to clipboard."
+        confirmAlert.alertStyle = .informational
+        confirmAlert.addButton(withTitle: "OK")
+        confirmAlert.runModal()
+    }
+    
+    private func openGitHubNewIssue() {
+        let title = "Bug Report: Provider fetch errors"
+        let body = """
+        **Describe the issue:**
+        [Please describe what you were doing when the error occurred]
+        
+        **Error Log:**
+        ```
+        [Paste the copied error log here, or remove this section if it contains sensitive information]
+        ```
+        
+        **Environment:**
+        - App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+        - macOS Version: \(ProcessInfo.processInfo.operatingSystemVersionString)
+        """
+        
+        let encodedTitle = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        
+        if let url = URL(string: "https://github.com/kargnas/opencode-bar/issues/new?title=\(encodedTitle)&body=\(encodedBody)") {
             NSWorkspace.shared.open(url)
         }
     }

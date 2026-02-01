@@ -47,24 +47,24 @@ final class ProviderViewModel: ObservableObject {
         
         // Fetch all providers in parallel
         logger.debug("🟡 [ProviderViewModel] Calling providerManager.fetchAll()")
-        let results = await providerManager.fetchAll()
-        logger.info("🟢 [ProviderViewModel] fetchAll() returned \(results.count) results")
+        let fetchResult = await providerManager.fetchAll()
+        logger.info("🟢 [ProviderViewModel] fetchAll() returned \(fetchResult.results.count) results, \(fetchResult.errors.count) errors")
         
         // Update state
-        self.providerResults = results
+        self.providerResults = fetchResult.results
         logger.debug("🟢 [ProviderViewModel] providerResults updated")
         
         self.lastUpdated = Date()
         logger.debug("🟢 [ProviderViewModel] lastUpdated set")
         
-        self.lastError = nil
-        logger.debug("🟢 [ProviderViewModel] lastError cleared")
+        self.lastError = fetchResult.errors.isEmpty ? nil : "Some providers failed"
+        logger.debug("🟢 [ProviderViewModel] lastError: \(self.lastError ?? "none")")
         
-        let cost = await providerManager.calculateTotalOverageCost(from: results)
+        let cost = await providerManager.calculateTotalOverageCost(from: fetchResult.results)
         self.totalOverageCost = cost
         logger.debug("🟢 [ProviderViewModel] totalOverageCost calculated: $\(String(format: "%.2f", cost))")
         
-        let alerts = await providerManager.getQuotaAlerts(from: results)
+        let alerts = await providerManager.getQuotaAlerts(from: fetchResult.results)
         self.quotaAlerts = alerts
         logger.debug("🟢 [ProviderViewModel] quotaAlerts: \(alerts.count) alerts")
         

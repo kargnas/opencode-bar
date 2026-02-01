@@ -3,6 +3,16 @@ import os.log
 
 private let logger = Logger(subsystem: "com.opencodeproviders", category: "ProviderManager")
 
+/// Result of fetchAll() including both successful results and errors
+struct FetchAllResult {
+    let results: [ProviderIdentifier: ProviderResult]
+    let errors: [ProviderIdentifier: String]
+    
+    var hasErrors: Bool {
+        !errors.isEmpty
+    }
+}
+
 /// Singleton coordinator for managing multiple AI provider usage tracking
 /// Handles parallel fetching, aggregation, and error recovery
 actor ProviderManager {
@@ -63,16 +73,18 @@ actor ProviderManager {
     // MARK: - Public API
 
     /// Fetches usage data from all registered providers in parallel
-    /// - Returns: Dictionary mapping provider identifiers to their result data
+    /// - Returns: FetchAllResult containing both successful results and error messages
     /// - Note: Returns partial results if some providers fail (graceful degradation)
-    func fetchAll() async -> [ProviderIdentifier: ProviderResult] {
+    func fetchAll() async -> FetchAllResult {
         logger.info("🔵 [ProviderManager] fetchAll() started - \(self.providers.count) providers")
         self.debugLog("🔵 fetchAll() started - \(self.providers.count) providers")
 
         var results: [ProviderIdentifier: ProviderResult] = [:]
+        var errors: [ProviderIdentifier: String] = [:]
 
         // Use TaskGroup for parallel fetching with timeout
-        await withTaskGroup(of: (ProviderIdentifier, ProviderResult?).self) { group in
+        // Return type: (identifier, result, errorMessage)
+        await withTaskGroup(of: (ProviderIdentifier, ProviderResult?, String?).self) { group in
             for provider in self.providers {
                 logger.debug("🟡 [ProviderManager] Adding fetch task for \(provider.identifier.displayName)")
                 self.debugLog("🟡 Adding fetch task for \(provider.identifier.displayName)")
@@ -80,7 +92,7 @@ actor ProviderManager {
                 group.addTask { [weak self] in
                     guard let self = self else {
                         logger.warning("🔴 [ProviderManager] Self deallocated for \(provider.identifier.displayName)")
-                        return (provider.identifier, nil)
+                        return (provider.identifier, nil, "Self deallocated")
                     }
 
                     // Fetch with timeout
@@ -94,10 +106,11 @@ actor ProviderManager {
                         logger.info("🟢 [ProviderManager] ✓ \(provider.identifier.displayName) fetch succeeded")
                         self.debugLog("🟢 ✓ \(provider.identifier.displayName) fetch succeeded")
 
-                        return (provider.identifier, result)
+                        return (provider.identifier, result, nil)
                     } catch {
-                        logger.error("🔴 [ProviderManager] ✗ \(provider.identifier.displayName) fetch failed: \(error.localizedDescription)")
-                        self.debugLog("🔴 ✗ \(provider.identifier.displayName) fetch failed: \(error.localizedDescription)")
+                        let errorMessage = error.localizedDescription
+                        logger.error("🔴 [ProviderManager] ✗ \(provider.identifier.displayName) fetch failed: \(errorMessage)")
+                        self.debugLog("🔴 ✗ \(provider.identifier.displayName) fetch failed: \(errorMessage)")
 
                         // Try to use cached value as fallback
                         let cached = await self.getCache(identifier: provider.identifier)
@@ -110,7 +123,8 @@ actor ProviderManager {
                             self.debugLog("🔴 No cached value available for \(provider.identifier.displayName)")
                         }
 
-                        return (provider.identifier, cached)
+                        // Return both cached result (if any) and error message
+                        return (provider.identifier, cached, errorMessage)
                     }
                 }
             }
@@ -119,7 +133,7 @@ actor ProviderManager {
             logger.debug("🟡 [ProviderManager] Collecting results from task group")
             self.debugLog("🟡 Collecting results from task group")
             
-            for await (identifier, result) in group {
+            for await (identifier, result, errorMessage) in group {
                 if let result = result {
                     results[identifier] = result
                     logger.debug("🟢 [ProviderManager] Collected result for \(identifier.displayName)")
@@ -128,12 +142,23 @@ actor ProviderManager {
                     logger.warning("🔴 [ProviderManager] No result for \(identifier.displayName)")
                     self.debugLog("🔴 No result for \(identifier.displayName)")
                 }
+                
+                // Store error message even if we have cached result (to show user there was an issue)
+                if let errorMessage = errorMessage {
+                    errors[identifier] = errorMessage
+                }
             }
         }
 
-        logger.info("🟢 [ProviderManager] fetchAll() completed: \(results.count)/\(self.providers.count) providers succeeded")
-        self.debugLog("🟢 fetchAll() completed: \(results.count)/\(self.providers.count) providers succeeded")
-        return results
+        logger.info("🟢 [ProviderManager] fetchAll() completed: \(results.count)/\(self.providers.count) providers succeeded, \(errors.count) errors")
+        self.debugLog("🟢 fetchAll() completed: \(results.count)/\(self.providers.count) providers succeeded, \(errors.count) errors")
+        return FetchAllResult(results: results, errors: errors)
+    }
+    
+    /// Legacy method for backward compatibility - returns only results
+    func fetchAllResults() async -> [ProviderIdentifier: ProviderResult] {
+        let fetchResult = await fetchAll()
+        return fetchResult.results
     }
 
     /// Calculates total overage cost from all pay-as-you-go providers
