@@ -298,12 +298,12 @@ jobs:
           git tag ${{ steps.new_version.outputs.new_version }}
           git push origin HEAD:main --follow-tags
       
-       - name: Create Release
-         uses: softprops/action-gh-release@v2
-         with:
-           tag_name: ${{ steps.new_version.outputs.new_version }}
-           name: OpenCode Bar ${{ steps.new_version.outputs.new_version }}
-           draft: false
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.new_version.outputs.new_version }}
+          name: OpenCode Bar ${{ steps.new_version.outputs.new_version }}
+          draft: false
           prerelease: ${{ inputs.prerelease }}
           files: |
             OpenCodeUsageMonitor-${{ steps.new_version.outputs.new_version }}.dmg

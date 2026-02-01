@@ -264,11 +264,11 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
       
-       - name: Create Release
-         uses: softprops/action-gh-release@v2
-         with:
-           name: OpenCode Bar ${{ steps.version.outputs.version }}
-           draft: false
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OpenCode Bar ${{ steps.version.outputs.version }}
+          draft: false
           prerelease: false
           files: |
             OpenCodeUsageMonitor-${{ steps.version.outputs.version }}.dmg
