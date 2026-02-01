@@ -652,19 +652,22 @@ final class StatusBarController: NSObject {
            debugLog("🟢 fetchMultiProviderData: filteredResults count=\(filteredResults.count)")
            logger.debug("🟢 [StatusBarController] filteredResults: \(filteredNames)")
 
-           for identifier in filteredResults.keys {
-               loadingProviders.remove(identifier)
-           }
-           let remainingLoading = loadingProviders.map { $0.displayName }.joined(separator: ", ")
-           debugLog("🟢 fetchMultiProviderData: cleared loading state for \(filteredResults.count) providers")
-           logger.debug("🟢 [StatusBarController] loadingProviders after clear: \(remainingLoading)")
-
            self.providerResults = filteredResults
            
            let filteredErrors = fetchResult.errors.filter { identifier, _ in
                isProviderEnabled(identifier) && identifier != .copilot
            }
            self.lastProviderErrors = filteredErrors
+
+           for identifier in filteredResults.keys {
+               loadingProviders.remove(identifier)
+           }
+           for identifier in filteredErrors.keys {
+               loadingProviders.remove(identifier)
+           }
+           let remainingLoading = loadingProviders.map { $0.displayName }.joined(separator: ", ")
+           debugLog("🟢 fetchMultiProviderData: cleared loading state for \(filteredResults.count) results, \(filteredErrors.count) errors")
+           logger.debug("🟢 [StatusBarController] loadingProviders after clear: \(remainingLoading)")
            self.viewErrorDetailsItem.isHidden = filteredErrors.isEmpty
            debugLog("📍 fetchMultiProviderData: viewErrorDetailsItem.isHidden = \(filteredErrors.isEmpty)")
            
@@ -828,6 +831,11 @@ final class StatusBarController: NSObject {
                        menu.insertItem(item, at: insertIndex)
                        insertIndex += 1
                    }
+                } else if let errorMessage = lastProviderErrors[identifier] {
+                    hasPayAsYouGo = true
+                    let item = createErrorMenuItem(identifier: identifier, errorMessage: errorMessage)
+                    menu.insertItem(item, at: insertIndex)
+                    insertIndex += 1
                 } else if loadingProviders.contains(identifier) {
                     hasPayAsYouGo = true
                     let item = NSMenuItem(title: "\(identifier.displayName) (Loading...)", action: nil, keyEquivalent: "")
@@ -943,6 +951,11 @@ final class StatusBarController: NSObject {
                         menu.insertItem(item, at: insertIndex)
                         insertIndex += 1
                     }
+                 } else if let errorMessage = lastProviderErrors[identifier] {
+                      hasQuota = true
+                      let item = createErrorMenuItem(identifier: identifier, errorMessage: errorMessage)
+                      menu.insertItem(item, at: insertIndex)
+                      insertIndex += 1
                  } else if loadingProviders.contains(identifier) {
                       hasQuota = true
                       let item = NSMenuItem(title: "\(identifier.displayName) (Loading...)", action: nil, keyEquivalent: "")
@@ -979,6 +992,11 @@ final class StatusBarController: NSObject {
                         menu.insertItem(item, at: insertIndex)
                         insertIndex += 1
                     }
+                } else if let errorMessage = lastProviderErrors[.geminiCLI] {
+                    hasQuota = true
+                    let item = createErrorMenuItem(identifier: .geminiCLI, errorMessage: errorMessage)
+                    menu.insertItem(item, at: insertIndex)
+                    insertIndex += 1
                 } else if loadingProviders.contains(.geminiCLI) {
                     hasQuota = true
                     let item = NSMenuItem(title: "Gemini CLI (Loading...)", action: nil, keyEquivalent: "")
@@ -1067,6 +1085,37 @@ final class StatusBarController: NSObject {
         if percentage < 20 {
             item.image = tintedImage(iconForProvider(identifier), color: .systemRed)
         }
+
+        return item
+    }
+
+    // MARK: - Error State Helpers
+
+    /// Checks for keywords like "Authentication failed", "not found", "API key", etc.
+    private func isAuthenticationError(_ errorMessage: String) -> Bool {
+        let authPatterns = [
+            "Authentication failed",
+            "not found",
+            "not available",
+            "access token",
+            "API key",
+            "No Gemini accounts",
+            "credentials"
+        ]
+        let lowercased = errorMessage.lowercased()
+        return authPatterns.contains { lowercased.contains($0.lowercased()) }
+    }
+
+    private func createErrorMenuItem(identifier: ProviderIdentifier, errorMessage: String) -> NSMenuItem {
+        let isAuthError = isAuthenticationError(errorMessage)
+        let statusText = isAuthError ? "No Credentials" : "Error"
+        let title = "\(identifier.displayName) (\(statusText))"
+
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.image = tintedImage(iconForProvider(identifier), color: .systemOrange)
+        item.isEnabled = false
+        item.tag = 999
+        item.toolTip = errorMessage
 
         return item
     }
