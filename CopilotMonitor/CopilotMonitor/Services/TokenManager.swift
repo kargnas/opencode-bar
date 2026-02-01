@@ -405,6 +405,8 @@ final class TokenManager {
                     let typeIndicator = isDir.boolValue ? "[DIR]" : "[FILE]"
                     debugLines.append("    \(typeIndicator) \(item)")
                 }
+            } else {
+                debugLines.append("  [UNREADABLE] Unable to list contents (permission denied or error)")
             }
         } else {
             debugLines.append("  [NOT FOUND]")
@@ -426,7 +428,8 @@ final class TokenManager {
 
         // 4. Antigravity accounts
         if let accounts = readAntigravityAccounts() {
-            debugLines.append("  [Antigravity] \(accounts.accounts.count) account(s), active index: \(accounts.activeIndex)")
+            let invalidMarker = accounts.activeIndex < 0 || accounts.activeIndex >= accounts.accounts.count ? " (INVALID)" : ""
+            debugLines.append("  [Antigravity] \(accounts.accounts.count) account(s), active index: \(accounts.activeIndex)\(invalidMarker)")
         } else {
             debugLines.append("  [Antigravity] NOT CONFIGURED")
         }
