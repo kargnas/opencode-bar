@@ -210,8 +210,8 @@ struct StatusCommand: ParsableCommand {
     mutating func run() throws {
         let jsonFlag = self.json
         let semaphore = DispatchSemaphore(value: 0)
-        var error: Error?
-        var output: String?
+        nonisolated(unsafe) var error: Error?
+        nonisolated(unsafe) var output: String?
         
         Task {
             do {
@@ -349,9 +349,9 @@ struct ProviderCommand: ParsableCommand {
         }
         
         let semaphore = DispatchSemaphore(value: 0)
-        var error: Error?
-        var output: String?
-        var fetchFailed = false
+        nonisolated(unsafe) var error: Error?
+        nonisolated(unsafe) var output: String?
+        nonisolated(unsafe) var fetchFailed = false
         
         Task {
             do {
