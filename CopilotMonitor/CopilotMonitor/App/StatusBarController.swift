@@ -76,6 +76,7 @@ final class StatusBarController: NSObject {
             UserDefaults.standard.set(newValue.rawValue, forKey: "predictionPeriod")
             updatePredictionPeriodMenu()
             updateHistorySubmenu()
+            updateMultiProviderMenu()
         }
     }
 
@@ -1844,7 +1845,17 @@ final class StatusBarController: NSObject {
         historySubmenu.addItem(NSMenuItem.separator())
         let predictionPeriodItem = NSMenuItem(title: "Prediction Period", action: nil, keyEquivalent: "")
         predictionPeriodItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Prediction Period")
-        predictionPeriodItem.submenu = predictionPeriodMenu
+        
+        // Create a fresh submenu to avoid NSMenu parent conflict
+        let freshPeriodSubmenu = NSMenu()
+        for period in PredictionPeriod.allCases {
+            let item = NSMenuItem(title: period.title, action: #selector(predictionPeriodSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = period.rawValue
+            item.state = (period.rawValue == predictionPeriod.rawValue) ? .on : .off
+            freshPeriodSubmenu.addItem(item)
+        }
+        predictionPeriodItem.submenu = freshPeriodSubmenu
         historySubmenu.addItem(predictionPeriodItem)
         debugLog("updateHistorySubmenu: completed successfully")
     }
