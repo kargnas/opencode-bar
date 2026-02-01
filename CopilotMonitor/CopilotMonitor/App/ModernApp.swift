@@ -2,7 +2,8 @@ import SwiftUI
 import MenuBarExtraAccess
 
 /// Modern SwiftUI entry point for the app
-/// NOTE: @main attribute will be added later when we switch from CopilotMonitorApp
+/// Uses MenuBarExtra with NSMenu bridge for full native menu support
+@main
 struct ModernApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var isMenuPresented = false

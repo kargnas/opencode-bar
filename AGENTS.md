@@ -79,6 +79,64 @@ let rightElementX: CGFloat = menuWidth - trailingMargin - iconSize  // = 270
 ### How to get quota usage?
 - in `@/scripts/` directory, you can see all of the scripts for every providers to get quota usage.
 
+## Architecture Patterns
+
+### SwiftUI Shell with AppKit Core
+The app uses a hybrid architecture:
+- **Entry Point**: `App/ModernApp.swift` with `@main` attribute and `MenuBarExtra`
+- **Menu System**: NSMenu-based via `StatusBarController` for full native menu features
+- **Bridge Pattern**: `MenuBarExtraAccess` library connects SwiftUI `MenuBarExtra` to `NSStatusItem`
+```swift
+// ModernApp.swift bridges SwiftUI MenuBarExtra to NSMenu
+MenuBarExtra { ... }
+  .menuBarExtraAccess(isPresented: $isMenuPresented) { statusItem in
+    controller.attachTo(statusItem)  // Attach NSMenu to status item
+  }
+```
+
+### Actor-Based Provider Architecture
+All providers use Swift actors for thread-safe state management:
+```swift
+actor ProviderActor {
+    private var cache: CachedData?
+    private var isLoading = false
+    
+    func fetchData() async throws -> ProviderUsage {
+        guard !isLoading else { return cachedData }
+        isLoading = true
+        defer { isLoading = false }
+        // fetch logic...
+    }
+}
+```
+- **Benefits**: Eliminates data races, no manual locking needed
+- **Pattern**: Use `@MainActor` for UI updates, actors for data fetching
+- **Conversion**: Replace `class` with `actor`, remove `DispatchQueue.main.async`
+
+### MenuDesignToken Usage
+All menu item layouts MUST use `MenuDesignToken` constants from `Menu/MenuDesignToken.swift`:
+```swift
+// Use tokens instead of magic numbers
+textField.frame.origin.x = MenuDesignToken.leadingOffset  // NOT: 14
+progressBar.frame.size.width = MenuDesignToken.progressBarWidth  // NOT: 100
+```
+- **Typography**: `MenuDesignToken.primaryFont`, `MenuDesignToken.secondaryFont`
+- **Spacing**: `MenuDesignToken.leadingOffset`, `MenuDesignToken.trailingMargin`
+- **Dimensions**: `MenuDesignToken.menuWidth`, `MenuDesignToken.itemHeight`
+
+### MenuBuilder Pattern
+Use `@MenuBuilder` for declarative menu construction:
+```swift
+@MenuBuilder
+func buildProviderSubmenu() -> [NSMenuItem] {
+    MenuItem("Refresh") { refresh() }
+    Separator()
+    ForEach(providers) { provider in
+        MenuItem(provider.name) { ... }
+    }
+}
+```
+
 <!-- opencode:reflection:start -->
 ### Error Handling & API Fallbacks
 - **API Response Type Flexibility**: External APIs may return different types than expected
@@ -231,11 +289,29 @@ let rightElementX: CGFloat = menuWidth - trailingMargin - iconSize  // = 270
        - Consequence: Cache saved but never used during progressive loading, causing unnecessary API calls
        - Solution: Use UTC calendar for all date comparisons to match cache storage format
        - Pattern: `calendar.timeZone = TimeZone(abbreviation: "UTC") ?? TimeZone.current`
-    - **ISO8601 Date Parsing Flexibility**:
-       - Fractional Seconds in API: API responses may include fractional seconds (e.g., "2026-02-05T14:59:30.123456Z")
-       - Parsing Failure: Basic ISO8601DateFormatter() doesn't handle fractional seconds by default
-       - Solution: Try parsing with `.withFractionalSeconds` first, then fallback to without
-       - Pattern: Define helper function that attempts multiple format options sequentially
-       - Example: `formatterWithFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]`
- 
-           <!-- opencode:reflection:end -->
+     - **ISO8601 Date Parsing Flexibility**:
+        - Fractional Seconds in API: API responses may include fractional seconds (e.g., "2026-02-05T14:59:30.123456Z")
+        - Parsing Failure: Basic ISO8601DateFormatter() doesn't handle fractional seconds by default
+        - Solution: Try parsing with `.withFractionalSeconds` first, then fallback to without
+        - Pattern: Define helper function that attempts multiple format options sequentially
+        - Example: `formatterWithFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]`
+  - **Process.readabilityHandler Concurrent Mutation**:
+     - Swift Concurrency Error: Modifying local variable in readabilityHandler triggers actor isolation error
+     - Pattern: Use `nonisolated(unsafe)` for `outputData` in async Process handlers
+     - Safety Guarantee: Handlers are serialized by Process lifecycle, making this safe
+     - Example Fix: OpenCodeZenProvider and AntigravityProvider both use this pattern
+     - Implementation: `nonisolated(unsafe) var outputData = Data()`
+  - **Prediction Range Boundary Safety**:
+     - Negative Range Assertion: Counting remaining days can result in `remainingDays <= 0` on month-end
+     - Crash Location: `1...remainingDays` range assertion fails when negative or zero
+     - Solution: Add guard clause before range iteration to return early
+     - Pattern: `guard remainingDays > 0 else { return (0, 0) }`
+     - Context: Usage prediction on last day of month causes EXC_BREAKPOINT crash within 1-3 seconds of app launch
+  - **TimeZone Force Unwrap Safety**:
+     - Force Unwrap Risk: `TimeZone(identifier: "UTC")!` can crash if identifier is invalid
+     - Safe Initialization: Use optional binding with fallback to system timezone
+     - Pattern: `if let utc = TimeZone(identifier: "UTC") { cal.timeZone = utc } else { cal.timeZone = TimeZone.current }`
+     - Application: All calendar instances that require UTC timezone for date calculations
+     - Example Fix: UsagePredictor, UsageHistory, StatusBarController updated with safe initialization
+
+            <!-- opencode:reflection:end -->
