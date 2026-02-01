@@ -39,7 +39,7 @@ enum ProviderIdentifier: String, CaseIterable {
         case .openCodeZen:
             return "OpenCode Zen"
         case .kimi:
-            return "Kimi"
+            return "Kimi for Coding"
         }
     }
 

@@ -33,7 +33,7 @@
 | **Claude** | Quota-based | 5h/7d usage windows, Sonnet/Opus breakdown |
 | **Codex** | Quota-based | Primary/Secondary quotas, plan type |
 | **Gemini CLI** | Quota-based | Per-model quotas, multi-account support |
-| **Kimi K2.5** | Quota-based | Usage limits, membership level, reset time |
+| **Kimi for Coding (Kimi K2.5)** | Quota-based | Usage limits, membership level, reset time |
 | **OpenRouter** | Pay-as-you-go | Credits balance, daily/weekly/monthly cost |
 | **OpenCode Zen** | Pay-as-you-go | Daily history (30 days), model breakdown |
 | **Antigravity** | Pay-as-you-go | Local language server monitoring |
