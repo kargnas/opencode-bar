@@ -195,12 +195,14 @@ final class StatusBarController: NSObject {
         versionItem.isEnabled = false
         menu.addItem(versionItem)
 
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(quitClicked), keyEquivalent: "q")
-        quitItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: "Quit")
-        quitItem.target = self
-        menu.addItem(quitItem)
-        statusItem.menu = menu
-    }
+         let quitItem = NSMenuItem(title: "Quit", action: #selector(quitClicked), keyEquivalent: "q")
+         quitItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: "Quit")
+         quitItem.target = self
+         menu.addItem(quitItem)
+         statusItem.menu = menu
+         
+         logMenuStructure()
+     }
 
     /// Attach the existing menu to an external NSStatusItem (for MenuBarExtraAccess bridge)
     func attachTo(_ statusItem: NSStatusItem) {
@@ -970,14 +972,21 @@ final class StatusBarController: NSObject {
         logMenuStructure()
     }
 
-    private func logMenuStructure() {
-        var output = "\n========== MENU STRUCTURE ==========\n"
-        for (index, item) in menu.items.enumerated() {
-            output += logMenuItem(item, depth: 0, index: index)
-        }
-        output += "====================================\n"
-        debugLog(output)
-    }
+     private func logMenuStructure() {
+         let total = menu.items.count
+         let separators = menu.items.filter { $0.isSeparatorItem }.count
+         let withAction = menu.items.filter { !$0.isSeparatorItem && $0.action != nil }.count
+         let withSubmenu = menu.items.filter { $0.hasSubmenu }.count
+         
+         logger.info("📋 [Menu] Items: \(total) (sep:\(separators), actions:\(withAction), submenus:\(withSubmenu))")
+         
+         var output = "\n========== MENU STRUCTURE ==========\n"
+         for (index, item) in menu.items.enumerated() {
+             output += logMenuItem(item, depth: 0, index: index)
+         }
+         output += "====================================\n"
+         debugLog(output)
+     }
 
     private func logMenuItem(_ item: NSMenuItem, depth: Int, index: Int) -> String {
         let indent = String(repeating: "  ", count: depth)
@@ -1053,18 +1062,18 @@ final class StatusBarController: NSObject {
          return image
      }
 
-    private func tintedImage(_ image: NSImage?, color: NSColor) -> NSImage? {
-        guard let image = image else { return nil }
-        let tinted = image.copy() as! NSImage
-        tinted.lockFocus()
-        color.set()
-        let rect = NSRect(origin: .zero, size: tinted.size)
-        rect.fill(using: .sourceAtop)
-        tinted.unlockFocus()
-        return tinted
-    }
+     private func tintedImage(_ image: NSImage?, color: NSColor) -> NSImage? {
+         guard let image = image else { return nil }
+         let tinted = image.copy() as! NSImage
+         tinted.lockFocus()
+         color.set()
+         let rect = NSRect(origin: .zero, size: tinted.size)
+         rect.fill(using: .sourceAtop)
+         tinted.unlockFocus()
+         return tinted
+     }
 
-    // MARK: - Custom Menu Item Views
+     // MARK: - Custom Menu Item Views
 
     func createHeaderView(title: String) -> NSView {
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 250, height: 23))
