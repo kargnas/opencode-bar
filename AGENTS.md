@@ -422,6 +422,7 @@ func buildProviderSubmenu() -> [NSMenuItem] {
         - Root Cause: No debouncing mechanism to prevent concurrent or rapid successive update requests
         - Solution: Implement debounce timer or check if update is already in progress before triggering new rebuild
         - Pattern: `updatePending = false` → schedule update → check `!updatePending` before proceeding → set `updatePending = true`
+<<<<<<< HEAD
    - **Cache Effectiveness for Progressive Loading**:
         - Initial Fetch Pattern: OpenCode Zen fetches 30 days progressively (~3 minutes total: 30 days × 4-6 seconds each)
         - Cache Threshold: 1-hour cache window appropriate for usage data that changes infrequently
@@ -434,5 +435,13 @@ func buildProviderSubmenu() -> [NSMenuItem] {
          - Solution: Use environment variable gating with `event_name` checks before accessing inputs
          - Pattern: Check `github.event_name` to determine if dispatch event with manual inputs
          - Prevention: Use conditional logic or provide default values for non-dispatch events
+   - **CLI Binary Bundle Embedding**:
+      - Build Phase Requirement: CLI binaries must be embedded in app bundle via PBXCopyFilesBuildPhase, not just built alongside app
+      - Error Pattern: "CLI binary not found at expected path in app bundle" when menu item tries to locate binary
+      - Xcode Configuration: Set dstSubfolderSpec = 1 (Wrapper) and subpath to Contents/MacOS
+      - Target Dependencies: Add PBXTargetDependency to ensure CLI builds before main app
+      - Code Signing: Set CodeSignOnCopy attribute on PBXBuildFile entry for CLI binary
+      - Verification: Binary appears at CopilotMonitor.app/Contents/MacOS/opencodebar-cli with executable permissions
+      - Pattern: Always test "Install CLI" menu item after build to verify binary accessibility
  
  <!-- opencode:reflection:end -->
