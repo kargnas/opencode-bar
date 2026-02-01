@@ -662,7 +662,7 @@ final class StatusBarController: NSObject {
            self.providerResults = filteredResults
            
            let filteredErrors = fetchResult.errors.filter { identifier, _ in
-               isProviderEnabled(identifier)
+               isProviderEnabled(identifier) && identifier != .copilot
            }
            self.lastProviderErrors = filteredErrors
            self.viewErrorDetailsItem.isHidden = filteredErrors.isEmpty
@@ -1303,7 +1303,10 @@ final class StatusBarController: NSObject {
         }
         
         errorLogText += String(repeating: "─", count: 40) + "\n"
-        errorLogText += "Time: \(Date())\n"
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+        errorLogText += "Time: \(dateFormatter.string(from: Date()))\n"
         errorLogText += "App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")\n"
         
         let alert = NSAlert()
@@ -1335,7 +1338,7 @@ final class StatusBarController: NSObject {
         case .alertFirstButtonReturn:
             debugLog("showErrorDetailsAlert: user chose Copy & Report on GitHub")
             copyToClipboard(errorLogText)
-            openGitHubNewIssue(withLog: errorLogText)
+            openGitHubNewIssue()
             
         case .alertSecondButtonReturn:
             debugLog("showErrorDetailsAlert: user chose Copy Log Only")
@@ -1363,7 +1366,7 @@ final class StatusBarController: NSObject {
         confirmAlert.runModal()
     }
     
-    private func openGitHubNewIssue(withLog log: String) {
+    private func openGitHubNewIssue() {
         let title = "Bug Report: Provider fetch errors"
         let body = """
         **Describe the issue:**
