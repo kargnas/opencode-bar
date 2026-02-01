@@ -99,10 +99,20 @@ final class OpenCodeZenProvider: ProviderProtocol {
             throw ProviderError.providerError("OpenCode CLI not found at \(opencodePath.path)")
         }
 
-        let output = try await runOpenCodeStats(days: 7)
-        let stats = try parseStats(output)
-
         let cachedHistory = loadDailyHistoryFromCache()
+        
+        var stats: OpenCodeStats? = nil
+        var statsFetchError: Error? = nil
+        
+        do {
+            let output = try await runOpenCodeStats(days: 7)
+            stats = try parseStats(output)
+            debugLog("Stats fetch succeeded: totalCost=$\(stats?.totalCost ?? 0)")
+        } catch {
+            statsFetchError = error
+            logger.warning("Failed to fetch current stats: \(error.localizedDescription)")
+            debugLog("Stats fetch failed: \(error.localizedDescription), will use cache fallback")
+        }
 
         if !OpenCodeZenProvider.loadingState.isLoading {
             Task.detached { [weak self] in
@@ -111,26 +121,57 @@ final class OpenCodeZenProvider: ProviderProtocol {
         } else {
             debugLog("Progressive loading already in progress, skipping")
         }
+        
+        let totalCost: Double
+        let modelCosts: [String: Double]
+        let sessions: Int
+        let messages: Int
+        let avgCostPerDay: Double
+        
+        if let stats = stats {
+            totalCost = stats.totalCost
+            modelCosts = stats.modelCosts
+            sessions = stats.sessions
+            messages = stats.messages
+            avgCostPerDay = stats.avgCostPerDay
+        } else {
+            totalCost = calculateTotalCostFromCache(cachedHistory, days: 7)
+            modelCosts = [:]
+            sessions = 0
+            messages = 0
+            avgCostPerDay = cachedHistory.isEmpty ? 0 : totalCost / Double(min(7, cachedHistory.count))
+            debugLog("Using cache fallback: totalCost=$\(totalCost) from \(cachedHistory.count) cached days")
+        }
 
         let monthlyLimit = 1000.0
-        let utilization = min((stats.totalCost / monthlyLimit) * 100, 100)
+        let utilization = min((totalCost / monthlyLimit) * 100, 100)
 
-        logger.info("OpenCode Zen: $\(String(format: "%.2f", stats.totalCost)) (\(String(format: "%.1f", utilization))% of $\(monthlyLimit) limit)")
+        logger.info("OpenCode Zen: $\(String(format: "%.2f", totalCost)) (\(String(format: "%.1f", utilization))% of $\(monthlyLimit) limit)")
 
+        var authSource = "~/.opencode/bin/opencode (CLI)"
+        if statsFetchError != nil {
+            authSource += " [stats: cached]"
+        }
+        
         let details = DetailedUsage(
-            modelBreakdown: stats.modelCosts,
-            sessions: stats.sessions,
-            messages: stats.messages,
-            avgCostPerDay: stats.avgCostPerDay,
+            modelBreakdown: modelCosts,
+            sessions: sessions > 0 ? sessions : nil,
+            messages: messages > 0 ? messages : nil,
+            avgCostPerDay: avgCostPerDay > 0 ? avgCostPerDay : nil,
             dailyHistory: cachedHistory,
-            monthlyCost: stats.totalCost,
-            authSource: "~/.opencode/bin/opencode (CLI)"
+            monthlyCost: totalCost,
+            authSource: authSource
         )
 
         return ProviderResult(
-            usage: .payAsYouGo(utilization: utilization, cost: stats.totalCost, resetsAt: nil),
+            usage: .payAsYouGo(utilization: utilization, cost: totalCost, resetsAt: nil),
             details: details
         )
+    }
+    
+    private func calculateTotalCostFromCache(_ history: [DailyUsage], days: Int) -> Double {
+        let recentDays = history.sorted { $0.date > $1.date }.prefix(days)
+        return recentDays.reduce(0) { $0 + $1.billedAmount }
     }
 
     // MARK: - Progressive Daily History Loading
