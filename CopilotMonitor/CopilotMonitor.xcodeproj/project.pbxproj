@@ -36,6 +36,7 @@
 		D11111111111111111111111 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22222222222222222222222 /* StatusBarController.swift */; };
 		E11111111111111111111111 /* CopilotUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22222222222222222222222 /* CopilotUsage.swift */; };
 		E33333333333333333333334 /* UsageHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44444444444444444444444 /* UsageHistory.swift */; };
+		SS1111111111111111111111 /* SubscriptionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = SS2222222222222222222222 /* SubscriptionSettings.swift */; };
 		E92DAE297D071D146591E201 /* MultiProviderStatusBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24BD2AE5B12FABC3E915AE27 /* MultiProviderStatusBarIconView.swift */; };
 		F08C918116D7B3024B68C81A /* MenuDesignToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C7C9FDB4600114F02B2915 /* MenuDesignToken.swift */; };
 		F11111111111111111111111 /* UsagePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22222222222222222222222 /* UsagePredictor.swift */; };
@@ -101,6 +102,7 @@
 		DBF0C48368166F3AD0C79F92 /* TokenManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TokenManager.swift; sourceTree = "<group>"; };
 		E22222222222222222222222 /* CopilotUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopilotUsage.swift; sourceTree = "<group>"; };
 		E44444444444444444444444 /* UsageHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageHistory.swift; sourceTree = "<group>"; };
+		SS2222222222222222222222 /* SubscriptionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionSettings.swift; sourceTree = "<group>"; };
 		ED35D8BD06A436306085737D /* CopilotProviderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CopilotProviderTests.swift; sourceTree = "<group>"; };
 		F1DA8E47F4CFEFC3571708AD /* AntigravityProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AntigravityProvider.swift; sourceTree = "<group>"; };
 		F22222222222222222222222 /* UsagePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsagePredictor.swift; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 			children = (
 				E22222222222222222222222 /* CopilotUsage.swift */,
 				E44444444444444444444444 /* UsageHistory.swift */,
+				SS2222222222222222222222 /* SubscriptionSettings.swift */,
 				BE39D5663A7ABADC7E54B91D /* ProviderProtocol.swift */,
 				PR2222222222222222222222 /* ProviderResult.swift */,
 				4158558E58B121A9D13C48C3 /* ProviderUsage.swift */,
@@ -434,6 +437,7 @@
 				D11111111111111111111111 /* StatusBarController.swift in Sources */,
 				E11111111111111111111111 /* CopilotUsage.swift in Sources */,
 				E33333333333333333333334 /* UsageHistory.swift in Sources */,
+				SS1111111111111111111111 /* SubscriptionSettings.swift in Sources */,
 				F11111111111111111111111 /* UsagePredictor.swift in Sources */,
 				F35960B456C28D71BE7575A5 /* GeminiCLIProvider.swift in Sources */,
 				CB3FA9AE43F3466269FA56F4 /* ProviderProtocol.swift in Sources */,

@@ -706,6 +706,21 @@ final class StatusBarController: NSObject {
         return total
     }
 
+    private func calculateTotalWithSubscriptions(providerResults: [ProviderIdentifier: ProviderResult], copilotUsage: CopilotUsage?) -> Double {
+        let payAsYouGo = calculatePayAsYouGoTotal(providerResults: providerResults, copilotUsage: copilotUsage)
+        let subscriptions = SubscriptionSettingsManager.shared.getTotalMonthlySubscriptionCost()
+        return payAsYouGo + subscriptions
+    }
+
+    private func shouldShowDollarAmount() -> Bool {
+        let hasSubscription = SubscriptionSettingsManager.shared.hasAnySubscription()
+        if hasSubscription {
+            return true
+        }
+        let payAsYouGo = calculatePayAsYouGoTotal(providerResults: providerResults, copilotUsage: currentUsage)
+        return payAsYouGo > 0
+    }
+
       private func updateMultiProviderMenu() {
           debugLog("updateMultiProviderMenu: started")
           guard let separatorIndex = menu.items.firstIndex(where: { $0.isSeparatorItem }) else {
@@ -747,9 +762,21 @@ final class StatusBarController: NSObject {
          menu.insertItem(separator1, at: insertIndex)
          insertIndex += 1
 
-          let total = calculatePayAsYouGoTotal(providerResults: providerResults, copilotUsage: currentUsage)
+          let payAsYouGoTotal = calculatePayAsYouGoTotal(providerResults: providerResults, copilotUsage: currentUsage)
+          let subscriptionTotal = SubscriptionSettingsManager.shared.getTotalMonthlySubscriptionCost()
+          let grandTotal = payAsYouGoTotal + subscriptionTotal
+          
+          let headerTitle: String
+          if subscriptionTotal > 0 && payAsYouGoTotal > 0 {
+              headerTitle = String(format: "Total: $%.2f (Subs: $%.0f + Usage: $%.2f)", grandTotal, subscriptionTotal, payAsYouGoTotal)
+          } else if subscriptionTotal > 0 {
+              headerTitle = String(format: "Total: $%.2f (Subscriptions)", grandTotal)
+          } else {
+              headerTitle = String(format: "Pay-as-you-go: $%.2f", payAsYouGoTotal)
+          }
+          
           let payAsYouGoHeader = NSMenuItem()
-          payAsYouGoHeader.view = createHeaderView(title: String(format: "Pay-as-you-go: $%.2f", total))
+          payAsYouGoHeader.view = createHeaderView(title: headerTitle)
           payAsYouGoHeader.tag = 999
           menu.insertItem(payAsYouGoHeader, at: insertIndex)
           insertIndex += 1
@@ -876,7 +903,6 @@ final class StatusBarController: NSObject {
 
          var hasQuota = false
 
-          // Copilot Quota (always show if currentUsage exists)
           if let copilotUsage = currentUsage {
               hasQuota = true
               let limit = copilotUsage.userPremiumRequestEntitlement
@@ -884,8 +910,14 @@ final class StatusBarController: NSObject {
               let remaining = limit - used
               let percentage = limit > 0 ? (Double(remaining) / Double(limit)) * 100 : 0
 
+              var titleParts = ["Copilot"]
+              if let planName = copilotUsage.planDisplayName {
+                  titleParts.append("(\(planName))")
+              }
+              titleParts.append(String(format: "%.0f%% remaining", percentage))
+
               let quotaItem = NSMenuItem(
-                  title: String(format: "Copilot (%.0f%% remaining)", percentage),
+                  title: titleParts.joined(separator: " "),
                   action: nil,
                   keyEquivalent: ""
               )
@@ -904,11 +936,38 @@ final class StatusBarController: NSObject {
               progressItem.view = createDisabledLabelView(text: "[\(progressBar)] \(used)/\(limit)")
               submenu.addItem(progressItem)
 
+              let usagePercent = limit > 0 ? (Double(used) / Double(limit)) * 100 : 0
               let usedItem = NSMenuItem()
-              usedItem.view = createDisabledLabelView(text: "This Month: \(used) used")
+              usedItem.view = createDisabledLabelView(text: String(format: "Monthly Usage: %.0f%%", usagePercent))
               submenu.addItem(usedItem)
+
+              if let resetDate = copilotUsage.quotaResetDateUTC {
+                  let formatter = DateFormatter()
+                  formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+                  formatter.timeZone = TimeZone.current
+                  let resetItem = NSMenuItem()
+                  resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: resetDate))", indent: 18)
+                  submenu.addItem(resetItem)
+
+                  let paceInfo = calculateMonthlyPace(usagePercent: usagePercent, resetDate: resetDate)
+                  let paceItem = NSMenuItem()
+                  paceItem.view = createPaceView(paceInfo: paceInfo)
+                  submenu.addItem(paceItem)
+              }
+
+              submenu.addItem(NSMenuItem.separator())
+
+              if let planName = copilotUsage.planDisplayName {
+                  let planItem = NSMenuItem()
+                  planItem.view = createDisabledLabelView(
+                      text: "Plan: \(planName)",
+                      icon: NSImage(systemSymbolName: "crown", accessibilityDescription: "Plan")
+                  )
+                  submenu.addItem(planItem)
+              }
+
               let freeItem = NSMenuItem()
-              freeItem.view = createDisabledLabelView(text: "Free Quota: \(limit)")
+              freeItem.view = createDisabledLabelView(text: "Quota Limit: \(limit)")
               submenu.addItem(freeItem)
 
               submenu.addItem(NSMenuItem.separator())
@@ -930,6 +989,8 @@ final class StatusBarController: NSObject {
                   multiline: true
               )
               submenu.addItem(authItem)
+
+              addSubscriptionItems(to: submenu, provider: .copilot)
 
               quotaItem.submenu = submenu
 
@@ -1025,7 +1086,7 @@ final class StatusBarController: NSObject {
         menu.insertItem(separator3, at: insertIndex)
 
         if let usage = currentUsage {
-            let totalCost = calculatePayAsYouGoTotal(providerResults: providerResults, copilotUsage: usage)
+            let totalCost = calculateTotalWithSubscriptions(providerResults: providerResults, copilotUsage: usage)
             statusBarIconView?.update(cost: totalCost)
         }
         debugLog("updateMultiProviderMenu: completed successfully")
@@ -1166,6 +1227,46 @@ final class StatusBarController: NSObject {
          return tinted
      }
 
+    // MARK: - Subscription Actions
+
+    @objc func subscriptionPlanSelected(_ sender: NSMenuItem) {
+        guard let action = sender.representedObject as? SubscriptionMenuAction else { return }
+
+        SubscriptionSettingsManager.shared.setPlan(action.plan, forKey: action.subscriptionKey)
+        menu.cancelTracking()
+        updateMultiProviderMenu()
+    }
+
+    @objc func customSubscriptionSelected(_ sender: NSMenuItem) {
+        guard let subscriptionKey = sender.representedObject as? String else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Custom Subscription Cost"
+        alert.informativeText = "Enter the monthly subscription cost:"
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Cancel")
+
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        if case .custom(let currentCost) = SubscriptionSettingsManager.shared.getPlan(forKey: subscriptionKey) {
+            inputField.stringValue = String(format: "%.0f", currentCost)
+        } else {
+            inputField.stringValue = ""
+        }
+        inputField.placeholderString = "Enter amount in USD"
+        alert.accessoryView = inputField
+
+        NSApp.activate(ignoringOtherApps: true)
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let cost = Double(inputField.stringValue), cost >= 0 {
+                SubscriptionSettingsManager.shared.setPlan(.custom(cost), forKey: subscriptionKey)
+                menu.cancelTracking()
+                updateMultiProviderMenu()
+            }
+        }
+    }
+
      // MARK: - Custom Menu Item Views
 
     func createHeaderView(title: String) -> NSView {
@@ -1281,8 +1382,8 @@ final class StatusBarController: NSObject {
     }
 
       private func updateUIForSuccess(usage: CopilotUsage) {
-          let totalPayAsYouGoCost = calculatePayAsYouGoTotal(providerResults: providerResults, copilotUsage: usage)
-          statusBarIconView?.update(cost: totalPayAsYouGoCost)
+          let totalCost = calculateTotalWithSubscriptions(providerResults: providerResults, copilotUsage: usage)
+          statusBarIconView?.update(cost: totalCost)
           signInItem.isHidden = true
           updateHistorySubmenu()
           updateMultiProviderMenu()

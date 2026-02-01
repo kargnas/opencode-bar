@@ -192,6 +192,83 @@ final class TokenManager {
         return auth.githubCopilot?.access
     }
 
+    /// Fetches Copilot plan and quota reset info from GitHub internal API
+    /// Uses the OpenCode GitHub Copilot token
+    /// - Returns: Tuple of (plan, quotaResetDateUTC) if successful, nil otherwise
+    func fetchCopilotPlanInfo() async -> (plan: String, quotaResetDateUTC: Date)? {
+        guard let accessToken = getGitHubCopilotAccessToken() else {
+            logger.warning("No GitHub Copilot token available for plan info fetch")
+            return nil
+        }
+
+        guard let url = URL(string: "https://api.github.com/copilot_internal/user") else {
+            logger.error("Invalid Copilot API URL")
+            return nil
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("token \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("vscode/1.96.2", forHTTPHeaderField: "Editor-Version")
+        request.setValue("2025-04-01", forHTTPHeaderField: "X-Github-Api-Version")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                logger.error("Invalid response type from Copilot API")
+                return nil
+            }
+
+            guard httpResponse.statusCode == 200 else {
+                logger.error("Copilot API returned status: \(httpResponse.statusCode)")
+                return nil
+            }
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                logger.error("Failed to parse Copilot API response")
+                return nil
+            }
+
+            let plan = json["copilot_plan"] as? String ?? "unknown"
+            var resetDate: Date?
+
+            // Parse quota_reset_date_utc (format: "2026-03-01T00:00:00.000Z")
+            if let resetDateStr = json["quota_reset_date_utc"] as? String {
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                resetDate = formatter.date(from: resetDateStr)
+
+                // Fallback without fractional seconds
+                if resetDate == nil {
+                    let fallbackFormatter = ISO8601DateFormatter()
+                    fallbackFormatter.formatOptions = [.withInternetDateTime]
+                    resetDate = fallbackFormatter.date(from: resetDateStr)
+                }
+            }
+
+            // Fallback to quota_reset_date (format: "2026-03-01")
+            if resetDate == nil, let resetDateStr = json["quota_reset_date"] as? String {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                dateFormatter.timeZone = TimeZone(identifier: "UTC")
+                resetDate = dateFormatter.date(from: resetDateStr)
+            }
+
+            if let resetDate = resetDate {
+                logger.info("Copilot plan info fetched: \(plan), reset: \(resetDate)")
+                return (plan: plan, quotaResetDateUTC: resetDate)
+            } else {
+                logger.warning("Copilot plan fetched but no reset date: \(plan)")
+                return (plan: plan, quotaResetDateUTC: Date())
+            }
+        } catch {
+            logger.error("Failed to fetch Copilot plan info: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     /// Gets OpenRouter API key from OpenCode auth
     /// - Returns: API key string if available, nil otherwise
     func getOpenRouterAPIKey() -> String? {

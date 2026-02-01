@@ -32,6 +32,10 @@ final class CopilotProvider: ProviderProtocol {
 
         await fetchUserEmail()
 
+        let planInfoTask = Task {
+            await TokenManager.shared.fetchCopilotPlanInfo()
+        }
+
         guard let customerId = await fetchCustomerId() else {
             logger.warning("CopilotProvider: Failed to get customer ID, trying cache")
             return try loadCachedUsageWithEmail()
@@ -39,9 +43,22 @@ final class CopilotProvider: ProviderProtocol {
 
         logger.info("CopilotProvider: Customer ID obtained - \(customerId)")
 
-        guard let usage = await fetchUsageData(customerId: customerId) else {
+        guard var usage = await fetchUsageData(customerId: customerId) else {
             logger.warning("CopilotProvider: Failed to fetch usage data, trying cache")
             return try loadCachedUsageWithEmail()
+        }
+
+        if let planInfo = await planInfoTask.value {
+            usage = CopilotUsage(
+                netBilledAmount: usage.netBilledAmount,
+                netQuantity: usage.netQuantity,
+                discountQuantity: usage.discountQuantity,
+                userPremiumRequestEntitlement: usage.userPremiumRequestEntitlement,
+                filteredUserPremiumRequestEntitlement: usage.filteredUserPremiumRequestEntitlement,
+                copilotPlan: planInfo.plan,
+                quotaResetDateUTC: planInfo.quotaResetDateUTC
+            )
+            logger.info("CopilotProvider: Plan info merged - \(planInfo.plan), reset: \(planInfo.quotaResetDateUTC)")
         }
 
         saveCache(usage: usage)
@@ -50,13 +67,11 @@ final class CopilotProvider: ProviderProtocol {
 
         logger.info("CopilotProvider: Fetch successful - used: \(usage.usedRequests), limit: \(usage.limitRequests), remaining: \(remaining)")
 
-        // Fetch history via cookies (with graceful fallback)
         var dailyHistory: [DailyUsage]?
         do {
             dailyHistory = try await CopilotHistoryService.shared.fetchHistory()
             logger.info("CopilotProvider: History fetched successfully - \(dailyHistory?.count ?? 0) days")
         } catch {
-            // Graceful fallback: history unavailable, but current usage still works
             logger.warning("CopilotProvider: Failed to fetch history: \(error.localizedDescription)")
         }
 
@@ -68,11 +83,21 @@ final class CopilotProvider: ProviderProtocol {
         return ProviderResult(
             usage: providerUsage,
             details: DetailedUsage(
+                resetPeriod: formatResetDate(usage.quotaResetDateUTC),
+                planType: usage.planDisplayName,
                 email: cachedUserEmail,
                 dailyHistory: dailyHistory,
                 authSource: "Browser Cookies (Chrome/Brave/Arc/Edge)"
             )
         )
+    }
+
+    private func formatResetDate(_ date: Date?) -> String? {
+        guard let date = date else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
     }
 
     // MARK: - Customer ID Fetching
