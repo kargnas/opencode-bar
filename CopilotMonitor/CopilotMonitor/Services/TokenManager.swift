@@ -452,16 +452,16 @@ final class TokenManager {
             debugLines.append("[~/.config/opencode] NOT FOUND")
         }
 
-        // 4. OpenCode CLI existence (dynamic search)
+        // 5. OpenCode CLI existence (dynamic search)
         debugLines.append("[OpenCode CLI] Searching...")
         if let cliPath = findOpenCodeCLI() {
             debugLines.append("[OpenCode CLI] FOUND at \(cliPath)")
         } else {
-            debugLines.append("[OpenCode CLI] NOT FOUND in PATH or common locations")
-            debugLines.append("  Searched: /opt/homebrew/bin, /usr/local/bin, ~/.opencode/bin, ~/.local/bin")
+            debugLines.append("[OpenCode CLI] NOT FOUND via which, login shell, or common locations")
+            debugLines.append("  Common locations checked: /opt/homebrew/bin, /usr/local/bin, ~/.opencode/bin, ~/.local/bin, /usr/bin")
         }
 
-        // 5. Token existence and lengths (masked for security)
+        // 6. Token existence and lengths (masked for security)
         debugLines.append("---------- Token Status ----------")
 
         if let auth = readOpenCodeAuth() {
@@ -573,7 +573,8 @@ final class TokenManager {
             if whichProcess.terminationStatus == 0 {
                 let data = whichPipe.fileHandleForReading.readDataToEndOfFile()
                 if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   !path.isEmpty {
+                   !path.isEmpty,
+                   FileManager.default.fileExists(atPath: path) {
                     return path
                 }
             }
@@ -594,7 +595,8 @@ final class TokenManager {
             if shellProcess.terminationStatus == 0 {
                 let data = shellPipe.fileHandleForReading.readDataToEndOfFile()
                 if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   !path.isEmpty {
+                   !path.isEmpty,
+                   FileManager.default.fileExists(atPath: path) {
                     return path
                 }
             }
@@ -606,6 +608,7 @@ final class TokenManager {
             "/usr/local/bin/opencode",
             FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".opencode/bin/opencode").path,
             FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/opencode").path,
+            "/usr/bin/opencode",
         ]
         
         for path in fallbackPaths {
