@@ -115,10 +115,56 @@ jobs:
       
       - name: Export Archive
         run: |
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/CopilotMonitor.xcarchive" \
-            -exportPath "$RUNNER_TEMP/export" \
-            -exportOptionsPlist ExportOptions.plist
+          # Copy signed app bundle directly from archive instead of using exportArchive
+          # exportArchive fails when CLI target creates additional products in /usr/local/bin
+          mkdir -p "$RUNNER_TEMP/export"
+          cp -R "$RUNNER_TEMP/CopilotMonitor.xcarchive/Products/Applications/OpenCode Bar.app" "$RUNNER_TEMP/export/"
+          echo "Copied app bundle from archive"
+          ls -la "$RUNNER_TEMP/export/"
+      
+      - name: Re-sign App Bundle for Notarization
+        run: |
+          APP_PATH="$RUNNER_TEMP/export/OpenCode Bar.app"
+          
+          echo "Re-signing embedded frameworks and binaries with Developer ID..."
+          
+          # Sign all executables in frameworks (deepest level first)
+          # This includes Sparkle's Autoupdate, Updater.app, Downloader.xpc, etc.
+          find "$APP_PATH/Contents/Frameworks" -type f -perm +111 | while read -r binary; do
+            echo "Signing: $binary"
+            codesign --force --sign "Developer ID Application" --timestamp --options runtime "$binary" 2>/dev/null || true
+          done
+          
+          # Sign XPC services
+          find "$APP_PATH/Contents/Frameworks" -name "*.xpc" | while read -r xpc; do
+            echo "Signing XPC: $xpc"
+            codesign --force --sign "Developer ID Application" --timestamp --options runtime "$xpc"
+          done
+          
+          # Sign helper apps inside frameworks  
+          find "$APP_PATH/Contents/Frameworks" -name "*.app" | while read -r app; do
+            echo "Signing helper app: $app"
+            codesign --force --sign "Developer ID Application" --timestamp --options runtime "$app"
+          done
+          
+          # Sign frameworks
+          find "$APP_PATH/Contents/Frameworks" -name "*.framework" | while read -r framework; do
+            echo "Signing framework: $framework"
+            codesign --force --sign "Developer ID Application" --timestamp --options runtime "$framework"
+          done
+          
+          # Sign CLI binary if present
+          if [ -f "$APP_PATH/Contents/MacOS/opencodebar-cli" ]; then
+            echo "Signing CLI binary..."
+            codesign --force --sign "Developer ID Application" --timestamp --options runtime \
+              "$APP_PATH/Contents/MacOS/opencodebar-cli"
+          fi
+          
+          # Finally re-sign the main app bundle
+          echo "Re-signing main app bundle..."
+          codesign --force --sign "Developer ID Application" --timestamp --options runtime "$APP_PATH"
+          
+          echo "✅ Re-signing completed"
       
       - name: Verify Code Signing
         run: |
@@ -136,22 +182,59 @@ jobs:
           echo "Created ZIP for notarization"
       
       - name: Notarize App
+        id: notarize
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           echo "Submitting app for notarization..."
-          xcrun notarytool submit "$RUNNER_TEMP/export/OpenCode Bar.zip" \
+          
+          # Submit and capture output to get submission ID
+          NOTARIZE_OUTPUT=$(xcrun notarytool submit "$RUNNER_TEMP/export/OpenCode Bar.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
             --wait \
-            --timeout 30m
+            --timeout 30m 2>&1) || true
           
-          echo "Notarization completed"
+          echo "$NOTARIZE_OUTPUT"
+          
+          # Extract submission ID
+          SUBMISSION_ID=$(echo "$NOTARIZE_OUTPUT" | grep -E "^\s*id:" | head -1 | awk '{print $2}')
+          echo "submission_id=$SUBMISSION_ID" >> "$GITHUB_OUTPUT"
+          
+          # Check if status is Invalid or rejected
+          if echo "$NOTARIZE_OUTPUT" | grep -q "status: Invalid"; then
+            echo "❌ Notarization FAILED with status: Invalid"
+            echo "notarization_status=failed" >> "$GITHUB_OUTPUT"
+          elif echo "$NOTARIZE_OUTPUT" | grep -q "status: Accepted"; then
+            echo "✅ Notarization succeeded"
+            echo "notarization_status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Unknown notarization status"
+            echo "notarization_status=unknown" >> "$GITHUB_OUTPUT"
+          fi
+      
+      - name: Get Notarization Log (on failure)
+        if: steps.notarize.outputs.notarization_status != 'success'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Fetching notarization log for submission: ${{ steps.notarize.outputs.submission_id }}"
+          xcrun notarytool log "${{ steps.notarize.outputs.submission_id }}" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
+          
+          echo ""
+          echo "❌ Notarization failed. See log above for details."
+          exit 1
       
       - name: Staple Notarization Ticket
+        if: steps.notarize.outputs.notarization_status == 'success'
         run: |
           xcrun stapler staple "$RUNNER_TEMP/export/OpenCode Bar.app"
           xcrun stapler validate "$RUNNER_TEMP/export/OpenCode Bar.app"

@@ -86,6 +86,13 @@ struct DetailedUsage {
     let toolWebReadCount: Int?
     let toolZreadCount: Int?
 
+    // Copilot-specific fields (overage tracking)
+    let copilotOverageCost: Double?
+    let copilotOverageRequests: Double?
+    let copilotUsedRequests: Int?
+    let copilotLimitRequests: Int?
+    let copilotQuotaResetDateUTC: Date?
+
     init(
         dailyUsage: Double? = nil,
         weeklyUsage: Double? = nil,
@@ -132,7 +139,12 @@ struct DetailedUsage {
         modelUsageCalls: Int? = nil,
         toolNetworkSearchCount: Int? = nil,
         toolWebReadCount: Int? = nil,
-        toolZreadCount: Int? = nil
+        toolZreadCount: Int? = nil,
+        copilotOverageCost: Double? = nil,
+        copilotOverageRequests: Double? = nil,
+        copilotUsedRequests: Int? = nil,
+        copilotLimitRequests: Int? = nil,
+        copilotQuotaResetDateUTC: Date? = nil
     ) {
         self.dailyUsage = dailyUsage
         self.weeklyUsage = weeklyUsage
@@ -180,6 +192,11 @@ struct DetailedUsage {
         self.toolNetworkSearchCount = toolNetworkSearchCount
         self.toolWebReadCount = toolWebReadCount
         self.toolZreadCount = toolZreadCount
+        self.copilotOverageCost = copilotOverageCost
+        self.copilotOverageRequests = copilotOverageRequests
+        self.copilotUsedRequests = copilotUsedRequests
+        self.copilotLimitRequests = copilotLimitRequests
+        self.copilotQuotaResetDateUTC = copilotQuotaResetDateUTC
     }
 }
 
@@ -198,6 +215,7 @@ extension DetailedUsage: Codable {
         case mcpUsagePercent, mcpUsageReset, mcpUsageUsed, mcpUsageTotal
         case modelUsageTokens, modelUsageCalls
         case toolNetworkSearchCount, toolWebReadCount, toolZreadCount
+        case copilotOverageCost, copilotOverageRequests, copilotUsedRequests, copilotLimitRequests, copilotQuotaResetDateUTC
     }
 
     init(from decoder: Decoder) throws {
@@ -248,6 +266,11 @@ extension DetailedUsage: Codable {
         toolNetworkSearchCount = try container.decodeIfPresent(Int.self, forKey: .toolNetworkSearchCount)
         toolWebReadCount = try container.decodeIfPresent(Int.self, forKey: .toolWebReadCount)
         toolZreadCount = try container.decodeIfPresent(Int.self, forKey: .toolZreadCount)
+        copilotOverageCost = try container.decodeIfPresent(Double.self, forKey: .copilotOverageCost)
+        copilotOverageRequests = try container.decodeIfPresent(Double.self, forKey: .copilotOverageRequests)
+        copilotUsedRequests = try container.decodeIfPresent(Int.self, forKey: .copilotUsedRequests)
+        copilotLimitRequests = try container.decodeIfPresent(Int.self, forKey: .copilotLimitRequests)
+        copilotQuotaResetDateUTC = try container.decodeIfPresent(Date.self, forKey: .copilotQuotaResetDateUTC)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -298,6 +321,11 @@ extension DetailedUsage: Codable {
         try container.encodeIfPresent(toolNetworkSearchCount, forKey: .toolNetworkSearchCount)
         try container.encodeIfPresent(toolWebReadCount, forKey: .toolWebReadCount)
         try container.encodeIfPresent(toolZreadCount, forKey: .toolZreadCount)
+        try container.encodeIfPresent(copilotOverageCost, forKey: .copilotOverageCost)
+        try container.encodeIfPresent(copilotOverageRequests, forKey: .copilotOverageRequests)
+        try container.encodeIfPresent(copilotUsedRequests, forKey: .copilotUsedRequests)
+        try container.encodeIfPresent(copilotLimitRequests, forKey: .copilotLimitRequests)
+        try container.encodeIfPresent(copilotQuotaResetDateUTC, forKey: .copilotQuotaResetDateUTC)
     }
 }
 
@@ -325,5 +353,8 @@ extension DetailedUsage {
             || mcpUsageUsed != nil || mcpUsageTotal != nil
             || modelUsageTokens != nil || modelUsageCalls != nil
             || toolNetworkSearchCount != nil || toolWebReadCount != nil || toolZreadCount != nil
+            || copilotOverageCost != nil || copilotOverageRequests != nil
+            || copilotUsedRequests != nil || copilotLimitRequests != nil
+            || copilotQuotaResetDateUTC != nil
     }
 }

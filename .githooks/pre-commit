@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# =============================================================================
+# Pre-commit Hook for OpenCode Bar
+# =============================================================================
+# Automatically runs:
+#   1. SwiftLint on staged .swift files
+#   2. action-validator on staged GitHub Actions workflow files
+#
+# Setup: git config core.hooksPath .githooks
+# =============================================================================
+
+echo "Running pre-commit checks..."
+
+# Track if any check fails
+EXIT_CODE=0
+
+# =============================================================================
+# 1. SwiftLint Check
+# =============================================================================
+echo ""
+echo "=== SwiftLint ==="
+
+if command -v swiftlint >/dev/null 2>&1; then
+    STAGED_SWIFT=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
+    
+    if [ -n "$STAGED_SWIFT" ]; then
+        echo "Checking staged Swift files..."
+        swiftlint lint --quiet CopilotMonitor/CopilotMonitor
+        if [ $? -ne 0 ]; then
+            echo "❌ SwiftLint found issues"
+            EXIT_CODE=1
+        else
+            echo "✓ SwiftLint passed"
+        fi
+    else
+        echo "No Swift files staged, skipping"
+    fi
+else
+    echo "⚠ SwiftLint not found (brew install swiftlint)"
+fi
+
+# =============================================================================
+# 2. GitHub Actions Workflow Validation
+# =============================================================================
+echo ""
+echo "=== GitHub Actions ==="
+
+STAGED_WORKFLOWS=$(git diff --cached --name-only --diff-filter=ACM | grep '^\.github/workflows/.*\.yml$' || true)
+
+if [ -n "$STAGED_WORKFLOWS" ]; then
+    if command -v npx >/dev/null 2>&1; then
+        for file in $STAGED_WORKFLOWS; do
+            echo "Validating $file..."
+            npx --yes @action-validator/cli "$file"
+            if [ $? -ne 0 ]; then
+                echo "❌ action-validator found issues in $file"
+                EXIT_CODE=1
+            fi
+        done
+        if [ $EXIT_CODE -eq 0 ]; then
+            echo "✓ All workflow files valid"
+        fi
+    else
+        echo "⚠ npx not found, skipping workflow validation"
+    fi
+else
+    echo "No workflow files staged, skipping"
+fi
+
+# =============================================================================
+# Result
+# =============================================================================
+echo ""
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "❌ Pre-commit checks failed. Fix issues or use --no-verify to bypass."
+    exit 1
+fi
+
+echo "✓ All pre-commit checks passed"
+exit 0

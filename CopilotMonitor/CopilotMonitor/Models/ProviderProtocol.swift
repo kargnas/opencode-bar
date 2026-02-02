@@ -14,17 +14,17 @@ enum ProviderIdentifier: String, CaseIterable {
     case claude
     case codex
     case geminiCLI = "gemini_cli"
-    case openRouter = "open_router"
+    case openRouter = "openrouter"
     case openCode = "open_code"
     case antigravity
-    case openCodeZen = "open_code_zen"
+    case openCodeZen = "opencode_zen"
     case kimi
     case zai
 
     var displayName: String {
         switch self {
         case .copilot:
-            return "Copilot Add-on"
+            return "Copilot"
         case .claude:
             return "Claude"
         case .codex:
@@ -80,10 +80,17 @@ protocol ProviderProtocol: AnyObject {
     /// The type of billing model this provider uses
     var type: ProviderType { get }
 
+    /// Timeout for fetch operations (default: 10 seconds)
+    var fetchTimeout: TimeInterval { get }
+
     /// Fetches current usage data from the provider
     /// - Returns: ProviderResult containing usage and optional detailed information
     /// - Throws: ProviderError if fetch fails
     func fetch() async throws -> ProviderResult
+}
+
+extension ProviderProtocol {
+    var fetchTimeout: TimeInterval { 10.0 }
 }
 
 /// Errors that can occur during provider operations

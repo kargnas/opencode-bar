@@ -30,6 +30,7 @@ extension Notification.Name {
 final class OpenCodeZenProvider: ProviderProtocol {
     let identifier: ProviderIdentifier = .openCodeZen
     let type: ProviderType = .payAsYouGo
+    let fetchTimeout: TimeInterval = 60.0
 
     // MARK: - Singleton for state management
 

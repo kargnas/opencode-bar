@@ -1,8 +1,11 @@
-## Language Restriction
+## Important Restriction
 - All of comments in code base, commit message, PR content and title should be written in English.
   - If you find any Korean text, please translate it to English.
 - **UI Language**
   - All user-facing text in the app MUST be in English.
+
+### Obey design decisions that specifically decided before by me
+- All the decision is speicifed in `@AGENTS-design-decisions.md` file.
 
 ## Coding Rules
 
@@ -68,21 +71,21 @@ let rightX = MenuDesignToken.rightElementX  // 270 (computed)
 - **ALWAYS** reuse `createDisabledLabelView()` when possible instead of creating custom NSView
 - When adding new constants, add them to `MenuDesignToken.swift` first, then update this section
 
-### Build & Run Commands
+### Pre-Development Setup (MUST run before any work)
+Before starting any development work, run:
 ```bash
-# Build
-xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj \
-  -scheme CopilotMonitor -configuration Debug build
+make setup
+```
+This sets up git hooks for automated pre-commit checks:
+- **SwiftLint**: Validates Swift code style
+- **action-validator**: Validates GitHub Actions workflow YAML files
 
-# Run (after build)
-open ~/Library/Developer/Xcode/DerivedData/CopilotMonitor-*/Build/Products/Debug/*.app
+### Build & Run Commands
+Use the VSCode task "🐛 Debug: Kill + Build + Run" for development.
+- Automatically detects DerivedData path via `xcodebuild -showBuildSettings`
+- Works with multiple worktrees (each has its own DerivedData directory)
 
-# Kill + Build + Run (one-liner)
-pkill -x "OpenCode Bar" 2>/dev/null; \
-xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj \
-  -scheme CopilotMonitor -configuration Debug build && \
-open ~/Library/Developer/Xcode/DerivedData/CopilotMonitor-*/Build/Products/Debug/*.app
-
+```bash
 # Watch logs
 log stream --predicate 'subsystem == "com.opencodeproviders"' --level debug
 # or check file: cat /tmp/provider_debug.log
@@ -283,7 +286,7 @@ func buildProviderSubmenu() -> [NSMenuItem] {
        - Menu Display Issue: Provider items appearing in different order on each refresh cycle
        - Root Cause: Looping over `[ProviderIdentifier: ProviderResult]` dictionary without explicit ordering
        - Solution: Create explicit display order array or use sorted keys when iterating
-       - Example: `let providerDisplayOrder = ["open_code_zen", "gemini_cli", "claude", "open_router", "antigravity"]`
+       - Example: `let providerDisplayOrder = ["opencode_zen", "gemini_cli", "claude", "openrouter", "antigravity"]`
        - Pattern: Define display order independently of data source to maintain consistent UI
      - **Menu Item Reference Deadlock**:
         - Shared NSMenuItem Reference: Referencing the same NSMenuItem instance (like `predictionPeriodMenu`) from multiple submenus can cause deadlocks
@@ -428,11 +431,142 @@ func buildProviderSubmenu() -> [NSMenuItem] {
         - Cache Success: Subsequent fetches show "(cached)" for all days, instant response
          - Pattern: Hybrid approach (fetch recent + cache older) reduces API calls by 71%+
          - Optimization: Ensure cache validation uses UTC calendar to match cache storage format
-      - **GitHub Actions Workflow Input Handling**:
-         - Event Type Dependencies: Workflow inputs may not be available on all event types
-         - Example Failure: `inputs.version` undefined on push/PR events, causing workflow failure
-         - Solution: Use environment variable gating with `event_name` checks before accessing inputs
-         - Pattern: Check `github.event_name` to determine if dispatch event with manual inputs
-         - Prevention: Use conditional logic or provide default values for non-dispatch events
- 
- <!-- opencode:reflection:end -->
+   - **GitHub Actions Workflow Input Handling**:
+      - Event Type Dependencies: Workflow inputs may not be available on all event types
+      - Example Failure: `inputs.version` undefined on push/PR events, causing workflow failure
+      - Solution: Use environment variable gating with `event_name` checks before accessing inputs
+      - Pattern: Check `github.event_name` to determine if dispatch event with manual inputs
+      - Prevention: Use conditional logic or provide default values for non-dispatch events
+   - **CLI Binary Bundle Embedding**:
+      - Build Phase Requirement: CLI binaries must be embedded in app bundle via PBXCopyFilesBuildPhase, not just built alongside app
+      - Error Pattern: "CLI binary not found at expected path in app bundle" when menu item tries to locate binary
+      - Xcode Configuration: Set dstSubfolderSpec = 1 (Wrapper) and subpath to Contents/MacOS
+      - Target Dependencies: Add PBXTargetDependency to ensure CLI builds before main app
+      - Code Signing: Set CodeSignOnCopy attribute on PBXBuildFile entry for CLI binary
+      - Verification: Binary appears at CopilotMonitor.app/Contents/MacOS/opencodebar-cli with executable permissions
+      - Pattern: Always test "Install CLI" menu item after build to verify binary accessibility
+   - **Progressive Loading Performance Optimization**:
+      - Problem: Each progressive loading step triggers full menu rebuild, causing UI flicker and performance degradation
+      - Symptom: Logs show repeated "updateMultiProviderMenu: started" with "Loading day X/30..." messages
+      - Root Cause: OpenCode Zen fetches 30 days sequentially, calling full menu update after each day
+      - Solution: Implement partial menu updates during progressive loading
+        - Update only the specific submenu item (e.g., "Loading day X/30...")
+        - Avoid rebuilding entire menu structure for incremental updates
+        - Use menu item references to update in-place instead of full rebuild
+      - Performance Impact: 30 days × full rebuild = ~30x slower than necessary
+      - Pattern: `updateLoadingProgress(dayIndex)` → update single loading item → `updateMenu()` only on completion
+    - **Debug Log Frequency Control**:
+       - Excessive Logging: `logMenuStructure()` called on every menu update produces massive log output
+       - Symptom: Logs show repeated identical menu structures hundreds of times during progressive loading
+       - Solution: Use debug guards or log level controls for verbose structure logging
+       - Pattern: `#if DEBUG logMenuStructure()` or move to trace-level logging instead of debug
+       - Recommendation: Disable structure logging after initial validation, enable only when debugging menu issues
+     - **Silent Error Handling for Non-Critical Operations**:
+        - Empty Catch Blocks: Use `catch {}` for operations where failure doesn't impact core functionality
+        - Appropriate Use Cases: Optional config file reading, CLI binary detection, environment discovery
+        - Safety Consideration: Only use when operation is truly non-critical and has fallback behavior
+        - Example: TokenManager uses silent catches for finding opencode binary - app still works if not found
+        - Pattern: `try? readOptionalConfig()` or `} catch { // Ignore non-critical failures }`
+    - **AppleScript Path Escaping for Security**:
+       - Command Injection Risk: Direct string interpolation in AppleScript allows path manipulation attacks
+       - Solution: Use AppleScript's `quoted form of` to safely escape paths with spaces and special characters
+       - Security Impact: Prevents privilege escalation via crafted app bundle paths
+       - Implementation Pattern:
+         ```applescript
+         set cliPath to "\(cliPath)"
+         do shell script "mkdir -p /usr/local/bin && cp " & quoted form of cliPath & " /usr/local/bin/opencodebar && chmod +x /usr/local/bin/opencodebar"
+         ```
+       - Example Fix: CLI installation AppleScript now safely handles paths containing spaces or special characters
+    - **CLI Exit Code Consistency**:
+       - Empty Results Handling: Exit with error code 1 when no provider data is available (not 0)
+       - Error Output: Write error messages to stderr instead of stdout for proper scripting error detection
+       - Pattern: Check `guard !results.isEmpty`, write to `FileHandle.standardError`, exit with `CLIExitCode.generalError.rawValue`
+       - Automation Benefit: Scripts can detect failures via exit code 1 instead of success code 0
+    - **Timeout-Based Error Handling with withThrowingTaskGroup**:
+       - Prevent API Hangs: Use `withThrowingTaskGroup` with timeout task to prevent indefinite waits
+       - Configurable Timeout: Default 30s timeout allows slow APIs to complete but prevents deadlocks
+       - Cancellation: First success cancels all other tasks (timeout or fetch)
+       - Pattern: Add timeout task with `Task.sleep(nanoseconds:)` that throws after configured duration
+       - Example: ProviderManager.swift fetchWithTimeout() prevents unresponsive providers from blocking entire fetch cycle
+    - **Retry Pattern with Exponential Backoff**:
+       - Transient Failure Recovery: Retry operations that may fail temporarily with increasing delays
+       - Max Retries: Typically 3 attempts before giving up
+       - Backoff Delay: 500ms between retries is common pattern in this codebase
+       - Pattern: `for attempt in 1...maxRetries { try { return op } catch { await Task.sleep(backoff) } }`
+       - Example: OpenCodeZenProvider retries stats command up to 3 times with 500ms delays
+    - **Graceful Degradation for Multi-Account Providers**:
+       - Partial Success Handling: Continue processing when some accounts fail but others succeed
+       - Multi-Provider Architecture: Gemini CLI supports multiple accounts, treat as partial success if any succeed
+       - Failure Condition: Only throw error if ALL accounts fail, not just some
+       - Pattern: Loop through accounts with try-catch, collect successes, throw only if results array empty
+       - Example: GeminiCLIProvider shows quota for working accounts even if one account's auth fails
+    - **Specific Error Type Catching**:
+       - Precise Error Classification: Catch specific error types for better error messages and handling
+       - Distinguish Failure Modes: Separate decoding errors from network errors vs authentication failures
+       - Pattern: `catch let error as DecodingError { throw ProviderError.decodingError(...) } catch { ... }`
+       - Example: ClaudeProvider catches DecodingError separately to provide more helpful parsing error messages
+    - **Debug Log Emoji Prefix Convention**:
+       - Standardized Status Indicators: Use consistent emoji for log message types across all components
+       - Status Emojis: 🔵 (blue) for start, 🟡 (yellow) for in-progress, 🟢 (green) for success, 🔴 (red) for failure
+       - Action Emojis: ⌨️ for keyboard shortcuts, 📋 for menu structure, 🔄 for refresh operations
+       - Result Emojis: ✅ for success results, ❌ for errors, ⚠️ for warnings
+       - Pattern: `[🔵 ComponentName] Starting operation`, `[🟢 ComponentName] Operation completed: 42 items`
+       - Benefit: Easy visual scanning of logs to track execution flow and identify issues quickly
+    - **Consistent Debug Log Function Pattern**:
+       - Reusable Helper: Each component has `debugLog()` function for centralized logging control
+       - Append-Only: Always append to existing log file using `seekToEndOfFile()` to preserve history
+       - Timestamp Prefix: Include `[\(Date())]` at start of each message for chronological tracking
+       - Component Identification: Prefix messages with component name (e.g., "ProviderManager:", "OpenCodeZen:")
+       - Guard with #if DEBUG: Completely removes debug code from Release builds automatically
+       - Pattern: File-based logging to /tmp/provider_debug.log with graceful silent failure
+       - Safety: Use `try?` for file operations to avoid crashing if log file is inaccessible
+   - **Dynamic Binary Discovery for External Tools**:
+      - Hardcoded Path Problem: Single hardcoded path like `~/.opencode/bin/opencode` fails when users install via Homebrew or other methods
+      - Multi-Strategy Search: Implement fallback search pattern with multiple discovery methods
+      - Search Priority: 1) 'which opencode' in current PATH, 2) Login shell PATH (captures shell profile additions), 3) Common install locations (Homebrew, OpenCode default, pip/pipx)
+      - Lazy Loading: Cache binary path on first successful discovery to avoid repeated searches
+      - Debug Logging: Show which discovery method found the binary for troubleshooting
+      - Example Fix: OpenCodeZenProvider changed from hardcoded path to dynamic multi-strategy search
+      - Pattern: Replace single path with search function that tries multiple locations in priority order
+   - **Multi-Strategy Auth File Discovery**:
+      - Single Path Problem: Hardcoded `~/.local/share/opencode/auth.json` fails when users have different OpenCode configurations
+      - XDG Standard Support: Respect $XDG_DATA_HOME environment variable when set (highest priority)
+      - Fallback Priority: 1) $XDG_DATA_HOME/opencode/auth.json (if set), 2) ~/.local/share/opencode/auth.json (XDG default), 3) ~/Library/Application Support/opencode/auth.json (macOS convention)
+      - Path Tracking: Store `lastFoundAuthPath` to show users which file was loaded for troubleshooting
+      - Sequential Try Pattern: Loop through paths and use first one that exists and is valid
+      - Example Fix: TokenManager added getAuthFilePaths() function and sequential try-catch loop
+      - Pattern: Define priority array of possible paths, try each in order, return first valid result
+   - **Sparkle Auto-Relaunch for Menu Bar Apps**:
+      - LSUIElement Special Case: Menu bar apps (LSUIElement=true) don't automatically relaunch after Sparkle updates
+      - Missing Relaunch: After update completes, app quits but doesn't restart, requiring manual launch
+      - Solution: Add SUAllowsAutomaticUpdates to Info.plist and implement SPUUpdaterDelegate with lifecycle hooks
+      - Required Methods: `updaterWillRelaunchApplication(_:)` and `updaterDidRelaunchApplication(_:)` in AppDelegate
+      - Pattern: Sparkle framework handles restart automatically when delegate is properly configured
+      - Example Fix: Added SUAllowsAutomaticUpdates=Yes to Info.plist and SPUUpdaterDelegate implementation
+   - **Dependency Version Pinning for CI Compatibility**:
+      - Experimental Feature Error: Newer package versions may require Swift experimental features not available in CI
+      - Example Failure: ArgumentParser 1.7.0 required 'AccessLevelOnImport' experimental feature
+      - CI Compatibility Solution: Pin to specific version using exactVersion instead of upToNextMajorVersion
+      - Pattern: Use exact version in Package.resolved to ensure consistent builds across environments
+      - Trade-off: Sacrifice latest features for build stability, update pinning only after verifying CI compatibility
+      - Example Fix: Pinned ArgumentParser from 1.7.0 to 1.5.0 in Package.resolved
+   - **Subscription Preset Comparison**:
+       - Name Uniqueness Problem: Comparing subscription presets by name can fail when multiple presets share the same name
+       - Example Failure: 'MAX' preset exists at both $100 and $200 cost levels, causing incorrect selection
+       - Solution: Compare by numeric cost value instead of string name to ensure unique identification
+       - Pattern: Use `cost` field or numeric identifier when comparing/selecting presets with potentially duplicate names
+       - Context: Menu item selection relies on accurate preset matching for correct pricing display
+   - **Copilot Quota Reset Date Tracking**:
+        - Missing Reset Date: Copilot quota reset date wasn't tracked in DetailedUsage struct
+        - Usage Prediction Impact: Without reset date, cannot accurately predict end-of-month quota usage
+        - Fix: Add `copilotQuotaResetDateUTC` field to DetailedUsage model and update encoding/decoding
+        - Pattern: When adding provider-specific data, ensure Codable conformance includes all new fields
+        - Example: CopilotProvider now passes `usage.quotaResetDateUTC` to DetailedUsage constructor
+   - **Test Model Alignment**:
+        - Test-Implementation Mismatch: Tests using wrong billing model (payAsYouGo vs quotaBased) cause assertion failures
+        - Example Failure: CodexProviderTests used payAsYouGo model while provider is quotaBased
+        - Fix: Update test models to match actual provider implementation (remaining/entitlement vs utilization/cost)
+        - Pattern: Verify test models match provider type when fixing provider bugs
+        - Validation: Check both assertions and expected field types (Int vs Double, optional vs required)
+
+   <!-- opencode:reflection:end -->

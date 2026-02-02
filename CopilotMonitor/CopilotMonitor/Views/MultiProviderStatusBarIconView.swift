@@ -7,8 +7,6 @@ struct ProviderAlert {
     let remainingPercent: Double
 }
 
-
-
 /// Multi-provider status bar icon view
 /// Displays: [$XXX 🔴ClaudeIcon 5% 🔴GeminiIcon 8%]
 final class MultiProviderStatusBarIconView: NSView {

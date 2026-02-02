@@ -23,11 +23,11 @@ actor ProviderManager {
     // MARK: - Properties
 
     /// All registered providers
-    /// Note: CopilotProvider requires WebView dependency - managed separately
     private var providers: [ProviderProtocol] = []
 
     private nonisolated static func makeDefaultProviders() -> [ProviderProtocol] {
         [
+            CopilotProvider(),
             ClaudeProvider(),
             CodexProvider(),
             GeminiCLIProvider(),
@@ -39,8 +39,7 @@ actor ProviderManager {
         ]
     }
 
-    /// Timeout for individual provider fetch operations (10 seconds)
-    private let fetchTimeout: TimeInterval = 10.0
+    // Per-provider timeout is now defined in ProviderProtocol.fetchTimeout
 
     /// Last successful fetch results (used as fallback on errors)
     /// Access via updateCache/getCache methods for thread safety
@@ -224,6 +223,7 @@ actor ProviderManager {
     /// - Returns: ProviderResult data
     /// - Throws: ProviderError or timeout error
     private func fetchWithTimeout(provider: ProviderProtocol) async throws -> ProviderResult {
+        let timeout = provider.fetchTimeout
         return try await withThrowingTaskGroup(of: ProviderResult.self) { group in
             // Add fetch task
             group.addTask {
@@ -232,8 +232,8 @@ actor ProviderManager {
 
             // Add timeout task
             group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(self.fetchTimeout * 1_000_000_000))
-                throw ProviderError.networkError("Fetch timeout after \(self.fetchTimeout)s")
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw ProviderError.networkError("Fetch timeout after \(timeout)s")
             }
 
             // Return first result (either success or timeout)

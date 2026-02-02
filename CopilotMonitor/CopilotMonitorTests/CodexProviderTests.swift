@@ -53,23 +53,22 @@ final class CodexProviderTests: XCTestCase {
         XCTAssertEqual(resetAfterSeconds, 7252)
     }
     
-    func testProviderUsagePayAsYouGoModel() {
-        let usage = ProviderUsage.payAsYouGo(utilization: 9.0, cost: nil, resetsAt: Date(timeIntervalSinceNow: 7252))
+    func testProviderUsageQuotaBasedModel() {
+        let usage = ProviderUsage.quotaBased(remaining: 91, entitlement: 100, overagePermitted: false)
         
         XCTAssertEqual(usage.usagePercentage, 9.0)
         XCTAssertTrue(usage.isWithinLimit)
-        XCTAssertNil(usage.remainingQuota)
-        XCTAssertNil(usage.totalEntitlement)
-        XCTAssertNotNil(usage.resetTime)
+        XCTAssertEqual(usage.remainingQuota, 91)
+        XCTAssertEqual(usage.totalEntitlement, 100)
+        XCTAssertNil(usage.resetTime)
     }
     
     func testProviderUsageStatusMessage() {
-        let resetTime = Date(timeIntervalSinceNow: 3600)
-        let usage = ProviderUsage.payAsYouGo(utilization: 9.0, cost: nil, resetsAt: resetTime)
+        let usage = ProviderUsage.quotaBased(remaining: 91, entitlement: 100, overagePermitted: false)
         
         let message = usage.statusMessage
-        XCTAssertTrue(message.contains("9.0%"))
-        XCTAssertTrue(message.contains("used"))
+        XCTAssertTrue(message.contains("91"))
+        XCTAssertTrue(message.contains("remaining"))
     }
     
     private func loadFixture(named: String) throws -> Any {

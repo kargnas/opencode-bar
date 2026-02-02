@@ -185,6 +185,8 @@ extension StatusBarController {
                 submenu.addItem(item)
             }
 
+            addSubscriptionItems(to: submenu, provider: .claude)
+
         case .codex:
             if let primary = details.dailyUsage {
                 var primaryTitle = String(format: "Primary: %.0f%%", primary)
@@ -218,6 +220,8 @@ extension StatusBarController {
                 submenu.addItem(item)
             }
 
+            addSubscriptionItems(to: submenu, provider: .codex)
+
         case .geminiCLI:
             if let models = details.modelBreakdown, !models.isEmpty {
                 for (model, quota) in models.sorted(by: { $0.key < $1.key }) {
@@ -235,6 +239,8 @@ extension StatusBarController {
                 )
                 submenu.addItem(item)
             }
+
+            addSubscriptionItems(to: submenu, provider: .geminiCLI, accountId: details.email)
 
         case .antigravity:
             if let models = details.modelBreakdown, !models.isEmpty {
@@ -257,6 +263,8 @@ extension StatusBarController {
                 item.view = createDisabledLabelView(text: "Email: \(email)")
                 submenu.addItem(item)
             }
+
+            addSubscriptionItems(to: submenu, provider: .antigravity)
 
         case .kimi:
             if let fiveHour = details.fiveHourUsage {
@@ -301,6 +309,8 @@ extension StatusBarController {
                 item.view = createDisabledLabelView(text: "Plan: \(plan)")
                 submenu.addItem(item)
             }
+
+            addSubscriptionItems(to: submenu, provider: .kimi)
 
         case .zai:
             let numberFormatter = NumberFormatter()
@@ -502,7 +512,50 @@ extension StatusBarController {
         )
         submenu.addItem(authItem)
 
+        addSubscriptionItems(to: submenu, provider: .geminiCLI, accountId: account.email)
+
         return submenu
+    }
+
+    func addSubscriptionItems(to submenu: NSMenu, provider: ProviderIdentifier, accountId: String? = nil) {
+        let subscriptionKey = SubscriptionSettingsManager.shared.subscriptionKey(for: provider, accountId: accountId)
+        let currentPlan = SubscriptionSettingsManager.shared.getPlan(forKey: subscriptionKey)
+        let presets = ProviderSubscriptionPresets.presets(for: provider)
+
+        submenu.addItem(NSMenuItem.separator())
+
+        let headerItem = NSMenuItem()
+        headerItem.view = createHeaderView(title: "Subscription")
+        submenu.addItem(headerItem)
+
+        let noneItem = NSMenuItem(title: "None ($0)", action: #selector(subscriptionPlanSelected(_:)), keyEquivalent: "")
+        noneItem.target = self
+        noneItem.representedObject = SubscriptionMenuAction(subscriptionKey: subscriptionKey, plan: .none)
+        noneItem.state = (currentPlan == .none) ? .on : .off
+        submenu.addItem(noneItem)
+
+        for preset in presets {
+            let item = NSMenuItem(
+                title: "\(preset.name) ($\(Int(preset.cost))/m)",
+                action: #selector(subscriptionPlanSelected(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = SubscriptionMenuAction(subscriptionKey: subscriptionKey, plan: .preset(preset.name, preset.cost))
+            if case .preset(_, let currentCost) = currentPlan, currentCost == preset.cost {
+                item.state = .on
+            }
+            submenu.addItem(item)
+        }
+
+        let customItem = NSMenuItem(title: "Set custom...", action: #selector(customSubscriptionSelected(_:)), keyEquivalent: "")
+        customItem.target = self
+        customItem.representedObject = subscriptionKey
+        if case .custom(let amount) = currentPlan {
+            customItem.state = .on
+            customItem.title = "Set custom ($\(Int(amount))/m)"
+        }
+        submenu.addItem(customItem)
     }
 
     func createCopilotHistorySubmenu() -> NSMenu {
@@ -635,6 +688,41 @@ extension StatusBarController {
             predictedFinalUsage = min(999, (usageRatio / elapsedRatio) * 100.0)
         } else {
             predictedFinalUsage = usage
+        }
+
+        return PaceInfo(
+            elapsedRatio: elapsedRatio,
+            usageRatio: usageRatio,
+            predictedFinalUsage: predictedFinalUsage
+        )
+    }
+
+    func calculateMonthlyPace(usagePercent: Double, resetDate: Date) -> PaceInfo {
+        let now = Date()
+        var calendar = Calendar(identifier: .gregorian)
+        if let utc = TimeZone(identifier: "UTC") {
+            calendar.timeZone = utc
+        }
+
+        guard let billingStart = calendar.date(byAdding: DateComponents(month: -1), to: resetDate) else {
+            return PaceInfo(elapsedRatio: 0, usageRatio: usagePercent / 100.0, predictedFinalUsage: usagePercent)
+        }
+
+        let totalSeconds = resetDate.timeIntervalSince(billingStart)
+        let elapsedSeconds = now.timeIntervalSince(billingStart)
+
+        guard totalSeconds > 0 else {
+            return PaceInfo(elapsedRatio: 0, usageRatio: usagePercent / 100.0, predictedFinalUsage: usagePercent)
+        }
+
+        let elapsedRatio = max(0, min(1, elapsedSeconds / totalSeconds))
+        let usageRatio = usagePercent / 100.0
+
+        let predictedFinalUsage: Double
+        if elapsedRatio > 0.01 {
+            predictedFinalUsage = min(999, (usageRatio / elapsedRatio) * 100.0)
+        } else {
+            predictedFinalUsage = usagePercent
         }
 
         return PaceInfo(
