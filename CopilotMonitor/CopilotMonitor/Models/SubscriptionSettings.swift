@@ -166,6 +166,8 @@ struct ProviderSubscriptionPresets {
             return openCodeZen
         case .zaiCodingPlan:
             return zaiCodingPlan
+        case .synthetic:
+            return []
         }
     }
 }

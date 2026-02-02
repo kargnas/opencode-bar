@@ -756,7 +756,7 @@ final class StatusBarController: NSObject {
               insertIndex += 1
           }
 
-            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zaiCodingPlan, .antigravity]
+            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zaiCodingPlan, .antigravity, .synthetic]
             for identifier in quotaOrder {
                 guard isProviderEnabled(identifier) else { continue }
 
@@ -965,6 +965,8 @@ final class StatusBarController: NSObject {
             image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
         case .zaiCodingPlan:
             image = NSImage(named: "ZaiIcon")
+        case .synthetic:
+            image = NSImage(named: "SyntheticIcon")
         }
 
          // Resize icons to 16x16 for consistent menu appearance

@@ -32,9 +32,10 @@ struct OpenCodeAuth: Codable {
     let opencode: APIKey?
     let kimiForCoding: APIKey?
     let zaiCodingPlan: APIKey?
+    let synthetic: APIKey?
 
     enum CodingKeys: String, CodingKey {
-        case anthropic, openai, openrouter, opencode
+        case anthropic, openai, openrouter, opencode, synthetic
         case githubCopilot = "github-copilot"
         case kimiForCoding = "kimi-for-coding"
         case zaiCodingPlan = "zai-coding-plan"
@@ -47,7 +48,8 @@ struct OpenCodeAuth: Codable {
         openrouter: APIKey?,
         opencode: APIKey?,
         kimiForCoding: APIKey?,
-        zaiCodingPlan: APIKey?
+        zaiCodingPlan: APIKey?,
+        synthetic: APIKey?
     ) {
         self.anthropic = anthropic
         self.openai = openai
@@ -56,6 +58,7 @@ struct OpenCodeAuth: Codable {
         self.opencode = opencode
         self.kimiForCoding = kimiForCoding
         self.zaiCodingPlan = zaiCodingPlan
+        self.synthetic = synthetic
     }
 
     init(from decoder: Decoder) throws {
@@ -67,6 +70,7 @@ struct OpenCodeAuth: Codable {
         opencode = try container.decodeIfPresent(APIKey.self, forKey: .opencode)
         kimiForCoding = try container.decodeIfPresent(APIKey.self, forKey: .kimiForCoding)
         zaiCodingPlan = try container.decodeIfPresent(APIKey.self, forKey: .zaiCodingPlan)
+        synthetic = try container.decodeIfPresent(APIKey.self, forKey: .synthetic)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -78,6 +82,7 @@ struct OpenCodeAuth: Codable {
         try container.encodeIfPresent(opencode, forKey: .opencode)
         try container.encodeIfPresent(kimiForCoding, forKey: .kimiForCoding)
         try container.encodeIfPresent(zaiCodingPlan, forKey: .zaiCodingPlan)
+        try container.encodeIfPresent(synthetic, forKey: .synthetic)
     }
 }
 
@@ -360,6 +365,11 @@ final class TokenManager: @unchecked Sendable {
     func getZaiCodingPlanAPIKey() -> String? {
         guard let auth = readOpenCodeAuth() else { return nil }
         return auth.zaiCodingPlan?.key
+    }
+
+    func getSyntheticAPIKey() -> String? {
+        guard let auth = readOpenCodeAuth() else { return nil }
+        return auth.synthetic?.key
     }
 
     /// Gets Gemini refresh token from Antigravity accounts (active account)

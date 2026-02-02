@@ -150,6 +150,8 @@ final class MultiProviderStatusBarIconView: NSView {
             iconName = "k.circle"
         case .zaiCodingPlan:
             iconName = "ZaiIcon"
+        case .synthetic:
+            iconName = "SyntheticIcon"
         }
 
         let icon: NSImage
