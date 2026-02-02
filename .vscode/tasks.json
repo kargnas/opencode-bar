@@ -4,7 +4,7 @@
         {
             "label": "🐛 Debug: Kill + Build + Run",
             "type": "shell",
-            "command": "pkill -x 'OpenCode Bar' 2>/dev/null; xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug build && open \"$(xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug -showBuildSettings 2>/dev/null | awk '/^[[:space:]]*BUILT_PRODUCTS_DIR = /{print $3}')/OpenCode Bar.app\"",
+            "command": "pkill -x 'OpenCode Bar' 2>/dev/null; xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug build && BUILT_PRODUCTS_DIR=$(xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug -showBuildSettings 2>/dev/null | sed -n 's/^[[:space:]]*BUILT_PRODUCTS_DIR = //p' | head -n 1); if [ -z \"$BUILT_PRODUCTS_DIR\" ]; then echo 'Error: BUILT_PRODUCTS_DIR not found' >&2; exit 1; fi; open \"$BUILT_PRODUCTS_DIR/OpenCode Bar.app\"",
             "group": {
                 "kind": "build",
                 "isDefault": true

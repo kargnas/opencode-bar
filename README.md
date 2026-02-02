@@ -91,9 +91,8 @@ cd opencode-bar
 xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj \
   -scheme CopilotMonitor -configuration Debug build
 
-# Open the app (find your DerivedData path first)
-ls ~/Library/Developer/Xcode/DerivedData/ | grep CopilotMonitor
-# Then open: ~/Library/Developer/Xcode/DerivedData/<your-path>/Build/Products/Debug/OpenCode\ Bar.app
+# Open the app (auto-detect path)
+open "$(xcodebuild -project CopilotMonitor/CopilotMonitor.xcodeproj -scheme CopilotMonitor -configuration Debug -showBuildSettings 2>/dev/null | sed -n 's/^[[:space:]]*BUILT_PRODUCTS_DIR = //p' | head -n 1)/OpenCode Bar.app"
 ```
 
 **Requirements:**
