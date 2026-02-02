@@ -1552,9 +1552,9 @@ final class StatusBarController: NSObject {
         let installed = FileManager.default.fileExists(atPath: "/usr/local/bin/opencodebar")
         
         if installed {
-            installCLIItem.title = "CLI Installed (opencodebar)"
+            installCLIItem.title = "Reinstall/Update CLI (opencodebar)"
             installCLIItem.state = .on
-            installCLIItem.isEnabled = false
+            installCLIItem.isEnabled = true
             debugLog("✅ CLI is installed at /usr/local/bin/opencodebar")
         } else {
             installCLIItem.title = "Install CLI (opencodebar)"

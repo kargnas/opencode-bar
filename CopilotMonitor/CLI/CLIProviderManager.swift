@@ -62,12 +62,7 @@ actor CLIProviderManager {
             for provider in self.providers {
                 logger.debug("🟡 [CLIProviderManager] Adding fetch task for \(provider.identifier.displayName)")
                 
-                group.addTask { [weak self] in
-                    guard let self = self else {
-                        logger.warning("🔴 [CLIProviderManager] Self deallocated for \(provider.identifier.displayName)")
-                        return (provider.identifier, nil)
-                    }
-                    
+                group.addTask {
                     // Fetch with timeout
                     do {
                         logger.debug("🟡 [CLIProviderManager] Fetching \(provider.identifier.displayName)")
@@ -99,6 +94,29 @@ actor CLIProviderManager {
         
         logger.info("🟢 [CLIProviderManager] fetchAll() completed: \(results.count)/\(self.providers.count) providers succeeded")
         return results
+    }
+    
+    /// Fetches usage data from a single provider
+    /// - Parameter identifier: Provider identifier to fetch
+    /// - Returns: ProviderResult on success, nil on failure
+    /// - Note: Returns nil if provider not registered or fetch fails (graceful degradation)
+    func fetch(provider identifier: ProviderIdentifier) async -> ProviderResult? {
+        logger.info("🔵 [CLIProviderManager] fetch(\(identifier.displayName)) started")
+        
+        guard let provider = providers.first(where: { $0.identifier == identifier }) else {
+            logger.error("🔴 [CLIProviderManager] Provider not registered: \(identifier.displayName)")
+            return nil
+        }
+        
+        do {
+            logger.debug("🟡 [CLIProviderManager] Fetching \(identifier.displayName)")
+            let result = try await fetchWithTimeout(provider: provider)
+            logger.info("🟢 [CLIProviderManager] ✓ \(identifier.displayName) fetch succeeded")
+            return result
+        } catch {
+            logger.error("🔴 [CLIProviderManager] ✗ \(identifier.displayName) fetch failed: \(error.localizedDescription)")
+            return nil
+        }
     }
     
     // MARK: - Private Helpers

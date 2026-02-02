@@ -358,9 +358,9 @@ struct ProviderCommand: ParsableCommand {
         Task {
             do {
                 let manager = CLIProviderManager()
-                let results = await manager.fetchAll()
+                let result = await manager.fetch(provider: identifier)
                 
-                guard let result = results[identifier] else {
+                guard let result = result else {
                     if jsonFlag {
                         let errorDict = ["error": "Failed to fetch data for '\(identifier.displayName)'"]
                         let encoder = JSONEncoder()
