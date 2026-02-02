@@ -33,7 +33,7 @@ Check for Updates...
 Quit (⌘Q)
 ```
 
-## Title Details
+## Labeling Details
 
 ### Title in macOS MenuBar
 - Displays the sum of all Pay-as-you-go and Subscription costs
@@ -76,6 +76,13 @@ Quit (⌘Q)
 - Header Format: `Quota Status: $XXX/m` (if subscriptions exist)
 - Header Format: `Quota Status` (if no subscriptions)
 - Example: `Quota Status: $288/m` or `Quota Status`
+
+### Formatting time
+- Absolute time:
+  - Standard time format: `2026-01-31 14:23 PST`
+  - All times are displayed in the user's local timezone
+- Relative time:
+  - Standard relative format: `in 5h 23m` or `3h 12m ago`
 
 ### Rules
 - **NEVER** change the menu group title formats without explicit approval
