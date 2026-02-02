@@ -759,7 +759,7 @@ final class StatusBarController: NSObject {
               insertIndex += 1
           }
 
-            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zai, .antigravity]
+            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zaiCodingPlan, .antigravity]
             for identifier in quotaOrder {
                 guard isProviderEnabled(identifier) else { continue }
 
@@ -966,7 +966,7 @@ final class StatusBarController: NSObject {
             image = NSImage(named: "OpencodeIcon")
         case .kimi:
             image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
-        case .zai:
+        case .zaiCodingPlan:
             image = NSImage(named: "ZaiIcon")
         }
 

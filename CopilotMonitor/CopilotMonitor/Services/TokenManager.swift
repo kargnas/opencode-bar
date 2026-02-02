@@ -31,7 +31,7 @@ struct OpenCodeAuth: Codable {
     let openrouter: APIKey?
     let opencode: APIKey?
     let kimiForCoding: APIKey?
-    let zai: APIKey?
+    let zaiCodingPlan: APIKey?
 
     enum CodingKeys: String, CodingKey {
         case anthropic, openai, openrouter, opencode
@@ -55,7 +55,7 @@ struct OpenCodeAuth: Codable {
         self.openrouter = openrouter
         self.opencode = opencode
         self.kimiForCoding = kimiForCoding
-        self.zai = zaiCodingPlan
+        self.zaiCodingPlan = zaiCodingPlan
     }
 
     init(from decoder: Decoder) throws {
@@ -66,7 +66,7 @@ struct OpenCodeAuth: Codable {
         openrouter = try container.decodeIfPresent(APIKey.self, forKey: .openrouter)
         opencode = try container.decodeIfPresent(APIKey.self, forKey: .opencode)
         kimiForCoding = try container.decodeIfPresent(APIKey.self, forKey: .kimiForCoding)
-        zai = try container.decodeIfPresent(APIKey.self, forKey: .zaiCodingPlan)
+        zaiCodingPlan = try container.decodeIfPresent(APIKey.self, forKey: .zaiCodingPlan)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -77,7 +77,7 @@ struct OpenCodeAuth: Codable {
         try container.encodeIfPresent(openrouter, forKey: .openrouter)
         try container.encodeIfPresent(opencode, forKey: .opencode)
         try container.encodeIfPresent(kimiForCoding, forKey: .kimiForCoding)
-        try container.encodeIfPresent(zai, forKey: .zaiCodingPlan)
+        try container.encodeIfPresent(zaiCodingPlan, forKey: .zaiCodingPlan)
     }
 }
 
@@ -358,9 +358,9 @@ final class TokenManager: @unchecked Sendable {
         return auth.kimiForCoding?.key
     }
 
-    func getZaiAPIKey() -> String? {
+    func getZaiCodingPlanAPIKey() -> String? {
         guard let auth = readOpenCodeAuth() else { return nil }
-        return auth.zai?.key
+        return auth.zaiCodingPlan?.key
     }
 
     /// Gets Gemini refresh token from Antigravity accounts (active account)
@@ -584,7 +584,7 @@ final class TokenManager: @unchecked Sendable {
             debugLines.append("  [OpenRouter] \(auth.openrouter != nil ? "CONFIGURED" : "NOT CONFIGURED")")
             debugLines.append("  [OpenCode] \(auth.opencode != nil ? "CONFIGURED" : "NOT CONFIGURED")")
             debugLines.append("  [Kimi] \(auth.kimiForCoding != nil ? "CONFIGURED" : "NOT CONFIGURED")")
-            debugLines.append("  [Z.ai] \(auth.zai != nil ? "CONFIGURED" : "NOT CONFIGURED")")
+            debugLines.append("  [Z.AI Coding Plan] \(auth.zaiCodingPlan != nil ? "CONFIGURED" : "NOT CONFIGURED")")
         } else {
             debugLines.append("  [auth.json] PARSE FAILED or NOT FOUND")
         }
@@ -815,12 +815,12 @@ final class TokenManager: @unchecked Sendable {
                 debugLines.append("[Kimi for Coding] NOT CONFIGURED")
             }
 
-            if let zai = auth.zai {
-                debugLines.append("[Z.ai] API Key Present")
-                debugLines.append("  - Key Length: \(zai.key.count) chars")
-                debugLines.append("  - Key Preview: \(maskToken(zai.key))")
+            if let zaiCodingPlan = auth.zaiCodingPlan {
+                debugLines.append("[Z.AI Coding Plan] API Key Present")
+                debugLines.append("  - Key Length: \(zaiCodingPlan.key.count) chars")
+                debugLines.append("  - Key Preview: \(maskToken(zaiCodingPlan.key))")
             } else {
-                debugLines.append("[Z.ai] NOT CONFIGURED")
+                debugLines.append("[Z.AI Coding Plan] NOT CONFIGURED")
             }
         } else {
             debugLines.append("[auth.json] PARSE FAILED or NOT FOUND")

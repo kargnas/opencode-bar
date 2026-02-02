@@ -1,7 +1,7 @@
 import Foundation
 import os.log
 
-private let logger = Logger(subsystem: "com.opencodeproviders", category: "ZaiProvider")
+private let logger = Logger(subsystem: "com.opencodeproviders", category: "ZaiCodingPlanProvider")
 
 private struct ZaiEnvelope<T: Decodable>: Decodable {
     let data: T?
@@ -152,8 +152,8 @@ private struct ZaiToolUsageTotals: Decodable {
     }
 }
 
-final class ZaiProvider: ProviderProtocol {
-    let identifier: ProviderIdentifier = .zai
+final class ZaiCodingPlanProvider: ProviderProtocol {
+    let identifier: ProviderIdentifier = .zaiCodingPlan
     let type: ProviderType = .quotaBased
 
     private let tokenManager: TokenManager
@@ -165,16 +165,16 @@ final class ZaiProvider: ProviderProtocol {
     }
 
     func fetch() async throws -> ProviderResult {
-        logger.info("Z.ai fetch started")
+        logger.info("Z.AI Coding Plan fetch started")
 
-        guard let apiKey = tokenManager.getZaiAPIKey() else {
-            logger.error("Z.ai API key not found")
-            throw ProviderError.authenticationFailed("Z.ai API key not available")
+        guard let apiKey = tokenManager.getZaiCodingPlanAPIKey() else {
+            logger.error("Z.AI Coding Plan API key not found")
+            throw ProviderError.authenticationFailed("Z.AI Coding Plan API key not available")
         }
 
         let quotaResponse = try await fetchQuotaLimits(apiKey: apiKey)
         guard let limits = quotaResponse.limits, !limits.isEmpty else {
-            logger.error("Z.ai quota response missing limits")
+            logger.error("Z.AI Coding Plan quota response missing limits")
             throw ProviderError.decodingError("Missing quota limits")
         }
 
@@ -185,7 +185,7 @@ final class ZaiProvider: ProviderProtocol {
         let mcpUsagePercent = mcpLimit?.percentage ?? mcpLimit?.computedPercentage
 
         guard tokenUsagePercent != nil || mcpUsagePercent != nil else {
-            logger.error("Z.ai quota limits missing percentage values")
+            logger.error("Z.AI Coding Plan quota limits missing percentage values")
             throw ProviderError.decodingError("Missing usage percentages")
         }
 
@@ -207,7 +207,7 @@ final class ZaiProvider: ProviderProtocol {
             let modelUsage = try await fetchModelUsage(apiKey: apiKey, startTime: startTime, endTime: endTime)
             modelUsageTotals = modelUsage.totalUsage
         } catch {
-            logger.warning("Z.ai model usage fetch failed: \(error.localizedDescription)")
+            logger.warning("Z.AI Coding Plan model usage fetch failed: \(error.localizedDescription)")
         }
 
         var toolUsageTotals: ZaiToolUsageTotals?
@@ -215,7 +215,7 @@ final class ZaiProvider: ProviderProtocol {
             let toolUsage = try await fetchToolUsage(apiKey: apiKey, startTime: startTime, endTime: endTime)
             toolUsageTotals = toolUsage.totalUsage
         } catch {
-            logger.warning("Z.ai tool usage fetch failed: \(error.localizedDescription)")
+            logger.warning("Z.AI Coding Plan tool usage fetch failed: \(error.localizedDescription)")
         }
 
         let details = DetailedUsage(
@@ -235,7 +235,7 @@ final class ZaiProvider: ProviderProtocol {
             toolZreadCount: toolUsageTotals?.totalZreadMcpCount
         )
 
-        logger.info("Z.ai usage fetched: tokens=\(tokenUsagePercent?.description ?? "n/a")% used, mcp=\(mcpUsagePercent?.description ?? "n/a")% used")
+        logger.info("Z.AI Coding Plan usage fetched: tokens=\(tokenUsagePercent?.description ?? "n/a")% used, mcp=\(mcpUsagePercent?.description ?? "n/a")% used")
         return ProviderResult(usage: usage, details: details)
     }
 
@@ -244,7 +244,7 @@ final class ZaiProvider: ProviderProtocol {
     private func fetchQuotaLimits(apiKey: String) async throws -> ZaiQuotaLimitResponse {
         let endpoint = "https://api.z.ai/api/monitor/usage/quota/limit"
         guard let url = URL(string: endpoint) else {
-            throw ProviderError.networkError("Invalid Z.ai quota endpoint")
+            throw ProviderError.networkError("Invalid Z.AI Coding Plan quota endpoint")
         }
 
         let data = try await fetchData(url: url, apiKey: apiKey)
@@ -253,14 +253,14 @@ final class ZaiProvider: ProviderProtocol {
 
     private func fetchModelUsage(apiKey: String, startTime: Int64, endTime: Int64) async throws -> ZaiModelUsageResponse {
         guard var components = URLComponents(string: "https://api.z.ai/api/monitor/usage/model-usage") else {
-            throw ProviderError.networkError("Invalid Z.ai model usage endpoint")
+            throw ProviderError.networkError("Invalid Z.AI Coding Plan model usage endpoint")
         }
         components.queryItems = [
             URLQueryItem(name: "startTime", value: String(startTime)),
             URLQueryItem(name: "endTime", value: String(endTime))
         ]
         guard let url = components.url else {
-            throw ProviderError.networkError("Invalid Z.ai model usage URL")
+            throw ProviderError.networkError("Invalid Z.AI Coding Plan model usage URL")
         }
 
         let data = try await fetchData(url: url, apiKey: apiKey)
@@ -269,14 +269,14 @@ final class ZaiProvider: ProviderProtocol {
 
     private func fetchToolUsage(apiKey: String, startTime: Int64, endTime: Int64) async throws -> ZaiToolUsageResponse {
         guard var components = URLComponents(string: "https://api.z.ai/api/monitor/usage/tool-usage") else {
-            throw ProviderError.networkError("Invalid Z.ai tool usage endpoint")
+            throw ProviderError.networkError("Invalid Z.AI Coding Plan tool usage endpoint")
         }
         components.queryItems = [
             URLQueryItem(name: "startTime", value: String(startTime)),
             URLQueryItem(name: "endTime", value: String(endTime))
         ]
         guard let url = components.url else {
-            throw ProviderError.networkError("Invalid Z.ai tool usage URL")
+            throw ProviderError.networkError("Invalid Z.AI Coding Plan tool usage URL")
         }
 
         let data = try await fetchData(url: url, apiKey: apiKey)
@@ -296,7 +296,7 @@ final class ZaiProvider: ProviderProtocol {
         }
 
         if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
-            throw ProviderError.authenticationFailed("Z.ai access token invalid or missing")
+            throw ProviderError.authenticationFailed("Z.AI Coding Plan access token invalid or missing")
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {

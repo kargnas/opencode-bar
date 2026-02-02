@@ -312,7 +312,7 @@ extension StatusBarController {
 
             addSubscriptionItems(to: submenu, provider: .kimi)
 
-        case .zai:
+        case .zaiCodingPlan:
             let numberFormatter = NumberFormatter()
             numberFormatter.numberStyle = .decimal
             numberFormatter.maximumFractionDigits = 0

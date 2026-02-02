@@ -158,7 +158,7 @@ struct ProviderSubscriptionPresets {
             return openCode
         case .openCodeZen:
             return openCodeZen
-        case .zai:
+        case .zaiCodingPlan:
             return []
         }
     }
