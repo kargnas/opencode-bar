@@ -138,22 +138,59 @@ jobs:
           echo "Created ZIP for notarization"
       
       - name: Notarize App
+        id: notarize
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           echo "Submitting app for notarization..."
-          xcrun notarytool submit "$RUNNER_TEMP/export/OpenCode Bar.zip" \
+          
+          # Submit and capture output to get submission ID
+          NOTARIZE_OUTPUT=$(xcrun notarytool submit "$RUNNER_TEMP/export/OpenCode Bar.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
             --wait \
-            --timeout 30m
+            --timeout 30m 2>&1) || true
           
-          echo "Notarization completed"
+          echo "$NOTARIZE_OUTPUT"
+          
+          # Extract submission ID
+          SUBMISSION_ID=$(echo "$NOTARIZE_OUTPUT" | grep -E "^\s*id:" | head -1 | awk '{print $2}')
+          echo "submission_id=$SUBMISSION_ID" >> "$GITHUB_OUTPUT"
+          
+          # Check if status is Invalid or rejected
+          if echo "$NOTARIZE_OUTPUT" | grep -q "status: Invalid"; then
+            echo "❌ Notarization FAILED with status: Invalid"
+            echo "notarization_status=failed" >> "$GITHUB_OUTPUT"
+          elif echo "$NOTARIZE_OUTPUT" | grep -q "status: Accepted"; then
+            echo "✅ Notarization succeeded"
+            echo "notarization_status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Unknown notarization status"
+            echo "notarization_status=unknown" >> "$GITHUB_OUTPUT"
+          fi
+      
+      - name: Get Notarization Log (on failure)
+        if: steps.notarize.outputs.notarization_status != 'success'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Fetching notarization log for submission: ${{ steps.notarize.outputs.submission_id }}"
+          xcrun notarytool log "${{ steps.notarize.outputs.submission_id }}" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
+          
+          echo ""
+          echo "❌ Notarization failed. See log above for details."
+          exit 1
       
       - name: Staple Notarization Ticket
+        if: steps.notarize.outputs.notarization_status == 'success'
         run: |
           xcrun stapler staple "$RUNNER_TEMP/export/OpenCode Bar.app"
           xcrun stapler validate "$RUNNER_TEMP/export/OpenCode Bar.app"
