@@ -13,15 +13,16 @@ actor CLIProviderManager {
     private let fetchTimeout: TimeInterval = 10.0
     
     static let registeredProviders: [ProviderIdentifier] = [
-        .claude, .codex, .geminiCLI, .openRouter, 
-        .antigravity, .openCodeZen, .kimi, .copilot
+        .claude, .codex, .geminiCLI, .openRouter,
+        .antigravity, .openCodeZen, .kimi, .copilot,
+        .synthetic
     ]
     
     // MARK: - Initialization
     
     init() {
-        // Initialize all 8 providers
-        // 7 shared providers (no UI dependencies)
+        // Initialize all 9 providers
+        // 8 shared providers (no UI dependencies)
         let claudeProvider = ClaudeProvider()
         let codexProvider = CodexProvider()
         let geminiCLIProvider = GeminiCLIProvider()
@@ -29,10 +30,11 @@ actor CLIProviderManager {
         let antigravityProvider = AntigravityProvider()
         let openCodeZenProvider = OpenCodeZenProvider()
         let kimiProvider = KimiProvider()
-        
+        let syntheticProvider = SyntheticProvider()
+
         // 1 CLI-specific provider (uses browser cookies instead of WebView)
         let copilotCLIProvider = CopilotCLIProvider()
-        
+
         self.providers = [
             claudeProvider,
             codexProvider,
@@ -41,9 +43,10 @@ actor CLIProviderManager {
             antigravityProvider,
             openCodeZenProvider,
             kimiProvider,
-            copilotCLIProvider
+            copilotCLIProvider,
+            syntheticProvider
         ]
-        
+
         logger.info("CLIProviderManager initialized with \(self.providers.count) providers")
     }
     

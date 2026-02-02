@@ -43,6 +43,8 @@
 		F11111111111111111111111 /* UsagePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22222222222222222222222 /* UsagePredictor.swift */; };
 		F35960B456C28D71BE7575A5 /* GeminiCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EC3B683EB6892E4F9C8316 /* GeminiCLIProvider.swift */; };
 		KI1111111111111111111111 /* KimiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = KI2222222222222222222222 /* KimiProvider.swift */; };
+		SYNTHETIC1111111111111111 /* SyntheticProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = SYNTHETIC2222222222222222 /* SyntheticProvider.swift */; };
+		SYNTHTEST2222222222222222 /* SyntheticProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = SYNTHTEST1111111111111111 /* SyntheticProviderTests.swift */; };
 		ME1111111111111111111111 /* MenuEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = ME2222222222222222222222 /* MenuEnums.swift */; };
 		OC1111111111111111111111 /* OpenCodeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OC2222222222222222222222 /* OpenCodeProvider.swift */; };
 		OR1111111111111111111111 /* OpenRouterProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OR2222222222222222222222 /* OpenRouterProvider.swift */; };
@@ -64,6 +66,7 @@
 		CLIANTIGRAVITY11111111 /* AntigravityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DA8E47F4CFEFC3571708AD /* AntigravityProvider.swift */; };
 		CLIOPENCZEN1111111111111 /* OpenCodeZenProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OZ2222222222222222222222 /* OpenCodeZenProvider.swift */; };
 		CLIKIMI1111111111111111 /* KimiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = KI2222222222222222222222 /* KimiProvider.swift */; };
+		CLISYNTHETIC1111111111111 /* SyntheticProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = SYNTHETIC2222222222222222 /* SyntheticProvider.swift */; };
 		CLIPROVMGR11111111111111 /* CLIProviderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CLIPROVMGR22222222222222 /* CLIProviderManager.swift */; };
 		CLICOPILOT11111111111111 /* CopilotCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CLICOPILOT22222222222222 /* CopilotCLIProvider.swift */; };
 		CLIHISTORY11111111111111 /* CopilotHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1085A77EF4A58E5B5EC71B /* CopilotHistoryService.swift */; };
@@ -156,6 +159,8 @@
 		T66666666666666666666666 /* codex_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = codex_response.json; sourceTree = "<group>"; };
 		T88888888888888888888888 /* copilot_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = copilot_response.json; sourceTree = "<group>"; };
 		TAAAAAAAAAAAAAAAAAAAAAAA /* gemini_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = gemini_response.json; sourceTree = "<group>"; };
+		SYNTHETIC2222222222222222 /* SyntheticProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticProvider.swift; sourceTree = "<group>"; };
+		SYNTHTEST1111111111111111 /* SyntheticProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticProviderTests.swift; sourceTree = "<group>"; };
 		TDDDDDDDDDDDDDDDDDDDDDD /* CopilotMonitorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CopilotMonitorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -234,6 +239,7 @@
 				F1DA8E47F4CFEFC3571708AD /* AntigravityProvider.swift */,
 				OZ2222222222222222222222 /* OpenCodeZenProvider.swift */,
 				KI2222222222222222222222 /* KimiProvider.swift */,
+				SYNTHETIC2222222222222222 /* SyntheticProvider.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -359,6 +365,7 @@
 				2D2B4000E33060BA5E00351B /* DependencyTests.swift */,
 				C8493409A9188CFF5B73D5B3 /* MenuDesignTokenTests.swift */,
 				54353FD130DDE0500F6B367F /* MenuResultBuilderTests.swift */,
+				SYNTHTEST1111111111111111 /* SyntheticProviderTests.swift */,
 			);
 			path = CopilotMonitorTests;
 			sourceTree = "<group>";
@@ -522,6 +529,7 @@
 			CLIANTIGRAVITY11111111 /* AntigravityProvider.swift in Sources */,
 			CLIOPENCZEN1111111111111 /* OpenCodeZenProvider.swift in Sources */,
 			CLIKIMI1111111111111111 /* KimiProvider.swift in Sources */,
+			CLISYNTHETIC1111111111111 /* SyntheticProvider.swift in Sources */,
 			CLIPROVMGR11111111111111 /* CLIProviderManager.swift in Sources */,
 			CLICOPILOT11111111111111 /* CopilotCLIProvider.swift in Sources */,
 			CLIHISTORY11111111111111 /* CopilotHistoryService.swift in Sources */,
@@ -556,6 +564,7 @@
 				390C3E920A03C8890AAA1CEE /* AntigravityProvider.swift in Sources */,
 				OZ1111111111111111111111 /* OpenCodeZenProvider.swift in Sources */,
 				KI1111111111111111111111 /* KimiProvider.swift in Sources */,
+				SYNTHETIC1111111111111111 /* SyntheticProvider.swift in Sources */,
 				68CE796F262067298FE88469 /* BrowserCookieService.swift in Sources */,
 				6C4146861DE2C13836DE1D35 /* CopilotHistoryService.swift in Sources */,
 				PMB111111111111111111111 /* ProviderMenuBuilder.swift in Sources */,
@@ -579,6 +588,7 @@
 				668B6906C95903D51823808A /* DependencyTests.swift in Sources */,
 				A1BED4A5CA1FEC2DADC461C2 /* MenuDesignTokenTests.swift in Sources */,
 				B58BAD3BFD97973070A2A892 /* MenuResultBuilderTests.swift in Sources */,
+				SYNTHTEST2222222222222222 /* SyntheticProviderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -440,6 +440,30 @@ extension StatusBarController {
 
             addSubscriptionItems(to: submenu, provider: .zaiCodingPlan)
 
+        case .synthetic:
+            if let fiveHour = details.fiveHourUsage {
+                let item = NSMenuItem()
+                item.view = createDisabledLabelView(text: String(format: "5h Used: %.0f%%", fiveHour))
+                submenu.addItem(item)
+                if let reset = details.fiveHourReset {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+                    formatter.timeZone = TimeZone.current
+                    let resetItem = NSMenuItem()
+                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
+                    submenu.addItem(resetItem)
+                }
+            }
+            if let limit = details.limit, let remaining = details.limitRemaining {
+                let item = NSMenuItem()
+                item.view = createDisabledLabelView(
+                    text: String(format: "Limit: %.1f/%.1f", remaining, limit),
+                    icon: NSImage(systemSymbolName: "chart.bar", accessibilityDescription: "Limit")
+                )
+                submenu.addItem(item)
+            }
+            return submenu
+
         default:
             break
         }
