@@ -70,7 +70,14 @@
 
 ## Installation
 
-### Download (Recommended)
+### Homebrew (Recommended)
+
+```bash
+brew tap kargnas/opencode-bar
+brew install --cask opencode-bar
+```
+
+### Download
 
 Download the latest `.dmg` file from the [**Releases**](https://github.com/kargnas/opencode-bar/releases/latest) page.
 
