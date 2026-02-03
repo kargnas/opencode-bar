@@ -458,7 +458,6 @@ extension StatusBarController {
             }
 
             addSubscriptionItems(to: submenu, provider: .synthetic)
-            return submenu
 
         default:
             break
