@@ -664,15 +664,14 @@ final class StatusBarController: NSObject {
 
          var hasQuota = false
 
-           if let copilotUsage = currentUsage {
-               hasQuota = true
-               let limit = copilotUsage.userPremiumRequestEntitlement
-               let used = copilotUsage.usedRequests
-               let usedPercent = limit > 0 ? (Double(used) / Double(limit)) * 100 : 0
+            if let copilotUsage = currentUsage {
+                hasQuota = true
+                let limit = copilotUsage.userPremiumRequestEntitlement
+                let used = copilotUsage.usedRequests
+                let usedPercent = limit > 0 ? (Double(used) / Double(limit)) * 100 : 0
 
-               let quotaItem = NSMenuItem()
-               quotaItem.view = createQuotaTitleView(name: ProviderIdentifier.copilot.displayName, usedPercent: usedPercent, icon: iconForProvider(.copilot))
-               quotaItem.tag = 999
+                 let quotaItem = createNativeQuotaMenuItem(name: ProviderIdentifier.copilot.displayName, usedPercent: usedPercent, icon: iconForProvider(.copilot))
+                 quotaItem.tag = 999
 
                if let details = providerResults[.copilot]?.details, details.hasAnyValue {
                    quotaItem.submenu = createDetailSubmenu(details, identifier: .copilot)
@@ -686,13 +685,12 @@ final class StatusBarController: NSObject {
             for identifier in quotaOrder {
                 guard isProviderEnabled(identifier) else { continue }
 
-                if let result = providerResults[identifier] {
-                    if case .quotaBased(let remaining, let entitlement, _) = result.usage {
-                        hasQuota = true
-                        let usedPercent = entitlement > 0 ? (Double(entitlement - remaining) / Double(entitlement)) * 100 : 0
-                        let item = NSMenuItem()
-                        item.view = createQuotaTitleView(name: identifier.displayName, usedPercent: usedPercent, icon: iconForProvider(identifier))
-                        item.tag = 999
+                 if let result = providerResults[identifier] {
+                     if case .quotaBased(let remaining, let entitlement, _) = result.usage {
+                          hasQuota = true
+                          let usedPercent = entitlement > 0 ? (Double(entitlement - remaining) / Double(entitlement)) * 100 : 0
+                          let item = createNativeQuotaMenuItem(name: identifier.displayName, usedPercent: usedPercent, icon: iconForProvider(identifier))
+                          item.tag = 999
 
                         if let details = result.details, details.hasAnyValue {
                             item.submenu = createDetailSubmenu(details, identifier: identifier)
@@ -723,16 +721,15 @@ final class StatusBarController: NSObject {
                    let geminiAccounts = details.geminiAccounts,
                    !geminiAccounts.isEmpty {
 
-                    for account in geminiAccounts {
-                        hasQuota = true
-                        let accountNumber = account.accountIndex + 1
-                        let usedPercent = 100 - account.remainingPercentage
-                        let displayName = geminiAccounts.count > 1
-                            ? "Gemini CLI #\(accountNumber)"
-                            : "Gemini CLI"
-                        let item = NSMenuItem()
-                        item.view = createQuotaTitleView(name: displayName, usedPercent: usedPercent, icon: iconForProvider(.geminiCLI))
-                        item.tag = 999
+                     for account in geminiAccounts {
+                         hasQuota = true
+                         let accountNumber = account.accountIndex + 1
+                         let usedPercent = 100 - account.remainingPercentage
+                         let displayName = geminiAccounts.count > 1
+                              ? "Gemini CLI #\(accountNumber)"
+                              : "Gemini CLI"
+                          let item = createNativeQuotaMenuItem(name: displayName, usedPercent: usedPercent, icon: iconForProvider(.geminiCLI))
+                          item.tag = 999
 
                         item.submenu = createGeminiAccountSubmenu(account)
 
@@ -819,6 +816,46 @@ final class StatusBarController: NSObject {
         let title = String(format: "%@    %.1f%%", identifier.displayName, utilization)
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.image = iconForProvider(identifier)
+        return item
+    }
+
+    /// Creates a native NSMenuItem for quota providers with right-aligned used% using NSAttributedString.
+    /// Uses tab stops for right-alignment, preserving native hover highlight and submenu arrow (▸).
+    /// Red color on percentage text when usedPercent > 80% to warn about approaching limits.
+    private func createNativeQuotaMenuItem(name: String, usedPercent: Double, icon: NSImage?) -> NSMenuItem {
+        let percentText = String(format: "%.0f%%", usedPercent)
+
+        // Right tab stop positioned to leave room for submenu arrow indicator
+        let tabPosition = MenuDesignToken.Dimension.menuWidth - MenuDesignToken.Spacing.trailingMargin - 30
+        let tabStop = NSTextTab(textAlignment: .right, location: tabPosition)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.tabStops = [tabStop]
+
+        let attributed = NSMutableAttributedString()
+        // Provider name in default font
+        attributed.append(NSAttributedString(
+            string: name,
+            attributes: [.font: MenuDesignToken.Typography.defaultFont]
+        ))
+        // Tab character + percentage in monospaced font, red when usage is critically high
+        let percentColor: NSColor = usedPercent > 80 ? .systemRed : .secondaryLabelColor
+        attributed.append(NSAttributedString(
+            string: "\t\(percentText)",
+            attributes: [
+                .font: MenuDesignToken.Typography.monospacedFont,
+                .foregroundColor: percentColor
+            ]
+        ))
+        // Apply paragraph style for tab stops to entire string
+        attributed.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attributed.length))
+
+        let item = NSMenuItem()
+        item.attributedTitle = attributed
+        item.image = icon
+        // Tint icon red when usage is critically high
+        if usedPercent > 80, let icon = icon {
+            item.image = tintedImage(icon, color: .systemRed)
+        }
         return item
     }
 
