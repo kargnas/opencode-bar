@@ -664,111 +664,33 @@ final class StatusBarController: NSObject {
 
          var hasQuota = false
 
-          if let copilotUsage = currentUsage {
-              hasQuota = true
-              let limit = copilotUsage.userPremiumRequestEntitlement
-              let used = copilotUsage.usedRequests
-              let remaining = limit - used
-              let percentage = limit > 0 ? (Double(remaining) / Double(limit)) * 100 : 0
+            if let copilotUsage = currentUsage {
+                hasQuota = true
+                let limit = copilotUsage.userPremiumRequestEntitlement
+                let used = copilotUsage.usedRequests
+                let usedPercent = limit > 0 ? (Double(used) / Double(limit)) * 100 : 0
 
-              var titleParts = ["Copilot"]
-              if let planName = copilotUsage.planDisplayName {
-                  titleParts.append("(\(planName))")
-              }
-              titleParts.append(String(format: "%.0f%% remaining", percentage))
+                 let quotaItem = createNativeQuotaMenuItem(name: ProviderIdentifier.copilot.displayName, usedPercent: usedPercent, icon: iconForProvider(.copilot))
+                 quotaItem.tag = 999
 
-              let quotaItem = NSMenuItem(
-                  title: titleParts.joined(separator: " "),
-                  action: nil,
-                  keyEquivalent: ""
-              )
-              quotaItem.image = iconForProvider(.copilot)
-              if percentage < 20 {
-                  quotaItem.image = tintedImage(iconForProvider(.copilot), color: .systemRed)
-              }
-              quotaItem.tag = 999
+               if let details = providerResults[.copilot]?.details, details.hasAnyValue {
+                   quotaItem.submenu = createDetailSubmenu(details, identifier: .copilot)
+               }
 
-              let submenu = NSMenu()
+               menu.insertItem(quotaItem, at: insertIndex)
+               insertIndex += 1
+           }
 
-              let filledBlocks = Int((Double(used) / Double(max(limit, 1))) * 10)
-              let emptyBlocks = 10 - filledBlocks
-              let progressBar = String(repeating: "═", count: filledBlocks) + String(repeating: "░", count: emptyBlocks)
-              let progressItem = NSMenuItem()
-              progressItem.view = createDisabledLabelView(text: "[\(progressBar)] \(used)/\(limit)")
-              submenu.addItem(progressItem)
-
-              let usagePercent = limit > 0 ? (Double(used) / Double(limit)) * 100 : 0
-              let usedItem = NSMenuItem()
-              usedItem.view = createDisabledLabelView(text: String(format: "Monthly Usage: %.0f%%", usagePercent))
-              submenu.addItem(usedItem)
-
-              if let resetDate = copilotUsage.quotaResetDateUTC {
-                  let formatter = DateFormatter()
-                  formatter.dateFormat = "yyyy-MM-dd HH:mm"
-                  formatter.timeZone = TimeZone(identifier: "UTC") ?? TimeZone(secondsFromGMT: 0)!
-                  let resetItem = NSMenuItem()
-                  resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: resetDate)) UTC", indent: 18)
-                  submenu.addItem(resetItem)
-
-                  let paceInfo = calculateMonthlyPace(usagePercent: usagePercent, resetDate: resetDate)
-                  let paceItem = NSMenuItem()
-                  paceItem.view = createPaceView(paceInfo: paceInfo)
-                  submenu.addItem(paceItem)
-              }
-
-              submenu.addItem(NSMenuItem.separator())
-
-              if let planName = copilotUsage.planDisplayName {
-                  let planItem = NSMenuItem()
-                  planItem.view = createDisabledLabelView(
-                      text: "Plan: \(planName)",
-                      icon: NSImage(systemSymbolName: "crown", accessibilityDescription: "Plan")
-                  )
-                  submenu.addItem(planItem)
-              }
-
-              let freeItem = NSMenuItem()
-              freeItem.view = createDisabledLabelView(text: "Quota Limit: \(limit)")
-              submenu.addItem(freeItem)
-
-              submenu.addItem(NSMenuItem.separator())
-
-              if let email = providerResults[.copilot]?.details?.email {
-                  let emailItem = NSMenuItem()
-                  emailItem.view = createDisabledLabelView(
-                      text: "Email: \(email)",
-                      icon: NSImage(systemSymbolName: "person.circle", accessibilityDescription: "User Email"),
-                      multiline: false
-                  )
-                  submenu.addItem(emailItem)
-              }
-
-              let authItem = NSMenuItem()
-              authItem.view = createDisabledLabelView(
-                  text: "Token From: Browser Cookies (Chrome/Brave/Arc/Edge)",
-                  icon: NSImage(systemSymbolName: "key", accessibilityDescription: "Auth Source"),
-                  multiline: true
-              )
-              submenu.addItem(authItem)
-
-              addSubscriptionItems(to: submenu, provider: .copilot)
-
-              quotaItem.submenu = submenu
-
-              menu.insertItem(quotaItem, at: insertIndex)
-              insertIndex += 1
-          }
-
-           let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .antigravity]
+            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zaiCodingPlan, .antigravity]
             for identifier in quotaOrder {
                 guard isProviderEnabled(identifier) else { continue }
 
-                if let result = providerResults[identifier] {
-                    if case .quotaBased(let remaining, let entitlement, _) = result.usage {
-                        hasQuota = true
-                        let percentage = entitlement > 0 ? (Double(remaining) / Double(entitlement)) * 100 : 0
-                        let item = createQuotaMenuItem(identifier: identifier, percentage: percentage)
-                        item.tag = 999
+                 if let result = providerResults[identifier] {
+                     if case .quotaBased(let remaining, let entitlement, _) = result.usage {
+                          hasQuota = true
+                          let usedPercent = entitlement > 0 ? (Double(entitlement - remaining) / Double(entitlement)) * 100 : 0
+                          let item = createNativeQuotaMenuItem(name: identifier.displayName, usedPercent: usedPercent, icon: iconForProvider(identifier))
+                          item.tag = 999
 
                         if let details = result.details, details.hasAnyValue {
                             item.submenu = createDetailSubmenu(details, identifier: identifier)
@@ -799,19 +721,15 @@ final class StatusBarController: NSObject {
                    let geminiAccounts = details.geminiAccounts,
                    !geminiAccounts.isEmpty {
 
-                    for account in geminiAccounts {
-                        hasQuota = true
-                        let accountNumber = account.accountIndex + 1
-                        let title = geminiAccounts.count > 1
-                            ? String(format: "Gemini CLI #%d (%.0f%% remaining)", accountNumber, account.remainingPercentage)
-                            : String(format: "Gemini CLI (%.0f%% remaining)", account.remainingPercentage)
-
-                        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-                        item.image = iconForProvider(.geminiCLI)
-                        if account.remainingPercentage < 20 {
-                            item.image = tintedImage(iconForProvider(.geminiCLI), color: .systemRed)
-                        }
-                        item.tag = 999
+                     for account in geminiAccounts {
+                         hasQuota = true
+                         let accountNumber = account.accountIndex + 1
+                         let usedPercent = 100 - account.remainingPercentage
+                         let displayName = geminiAccounts.count > 1
+                              ? "Gemini CLI #\(accountNumber)"
+                              : "Gemini CLI"
+                          let item = createNativeQuotaMenuItem(name: displayName, usedPercent: usedPercent, icon: iconForProvider(.geminiCLI))
+                          item.tag = 999
 
                         item.submenu = createGeminiAccountSubmenu(account)
 
@@ -901,15 +819,34 @@ final class StatusBarController: NSObject {
         return item
     }
 
-    private func createQuotaMenuItem(identifier: ProviderIdentifier, percentage: Double) -> NSMenuItem {
-        let title = String(format: "%@ (%.0f%% remaining)", identifier.displayName, percentage)
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        item.image = iconForProvider(identifier)
-
-        if percentage < 20 {
-            item.image = tintedImage(iconForProvider(identifier), color: .systemRed)
+    /// Creates a native NSMenuItem for quota providers with colored usage percentage in parentheses.
+    /// Red color on name and percentage when usedPercent > 80% to warn about approaching limits.
+    private func createNativeQuotaMenuItem(name: String, usedPercent: Double, icon: NSImage?) -> NSMenuItem {
+        let percentText = String(format: "(%.0f%%)", usedPercent)
+        let percentColor: NSColor = usedPercent > 80 ? .systemRed : .secondaryLabelColor
+        
+        let attributed = NSMutableAttributedString()
+        // Provider name in default font
+        attributed.append(NSAttributedString(
+            string: "\(name) ",
+            attributes: [.font: MenuDesignToken.Typography.defaultFont]
+        ))
+        // Percentage in parentheses, colored when usage is critically high
+        attributed.append(NSAttributedString(
+            string: percentText,
+            attributes: [
+                .font: MenuDesignToken.Typography.defaultFont,
+                .foregroundColor: percentColor
+            ]
+        ))
+        
+        let item = NSMenuItem()
+        item.attributedTitle = attributed
+        item.image = icon
+        // Tint icon red when usage is critically high
+        if usedPercent > 80, let icon = icon {
+            item.image = tintedImage(icon, color: .systemRed)
         }
-
         return item
     }
 
@@ -944,29 +881,31 @@ final class StatusBarController: NSObject {
         return item
     }
 
-     private func iconForProvider(_ identifier: ProviderIdentifier) -> NSImage? {
-         var image: NSImage?
+    private func iconForProvider(_ identifier: ProviderIdentifier) -> NSImage? {
+        var image: NSImage?
 
-         switch identifier {
-         case .copilot:
-             image = NSImage(named: "CopilotIcon")
-         case .claude:
-             image = NSImage(named: "ClaudeIcon")
-         case .codex:
-             image = NSImage(named: "CodexIcon")
-         case .geminiCLI:
-             image = NSImage(named: "GeminiIcon")
-         case .openCode:
-             image = NSImage(named: "OpencodeIcon")
-         case .openRouter:
-             image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: identifier.displayName)
-         case .antigravity:
-             image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
-         case .openCodeZen:
-             image = NSImage(named: "OpencodeIcon")
-         case .kimi:
-             image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
-         }
+        switch identifier {
+        case .copilot:
+            image = NSImage(named: "CopilotIcon")
+        case .claude:
+            image = NSImage(named: "ClaudeIcon")
+        case .codex:
+            image = NSImage(named: "CodexIcon")
+        case .geminiCLI:
+            image = NSImage(named: "GeminiIcon")
+        case .openCode:
+            image = NSImage(named: "OpencodeIcon")
+        case .openRouter:
+            image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: identifier.displayName)
+        case .antigravity:
+            image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
+        case .openCodeZen:
+            image = NSImage(named: "OpencodeIcon")
+        case .kimi:
+            image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
+        case .zaiCodingPlan:
+            image = NSImage(named: "ZaiIcon")
+        }
 
          // Resize icons to 16x16 for consistent menu appearance
          if let image = image {
@@ -1161,7 +1100,9 @@ final class StatusBarController: NSObject {
       }
 
     private func updateUIForLoggedOut() {
-        statusBarIconView?.showError()
+        logger.info("updateUIForLoggedOut: showing default status")
+        debugLog("updateUIForLoggedOut: reset status bar icon to default")
+        statusBarIconView?.update(cost: 0)
         signInItem.isHidden = false
     }
 

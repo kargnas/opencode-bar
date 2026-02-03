@@ -16,10 +16,10 @@ Pay-as-you-go: $37.61
   OpenCode Zen     $0.19     ▸
 ─────────────────────────────
 Quota Status: $219/m
-  Copilot          0%        ▸
-  Claude           60%       ▸
-  Codex            100%      ▸
-  Gemini CLI (#1)  100%      ▸
+  Copilot (0%)           ▸
+  Claude (60%)           ▸
+  Codex (100%)           ▸
+  Gemini CLI #1 (100%)   ▸
 ─────────────────────────────
 Predicted EOM: $451
 ─────────────────────────────
@@ -33,7 +33,7 @@ Check for Updates...
 Quit (⌘Q)
 ```
 
-## Title Details
+## Labeling Details
 
 ### Title in macOS MenuBar
 - Displays the sum of all Pay-as-you-go and Subscription costs
@@ -61,8 +61,10 @@ Quit (⌘Q)
   - **GitHub Copilot** - Credits-based quotas with overage billing (Overage billing will be charged as `Add-on` in Pay-as-you-go)
   - **Gemini CLI** - Per-model quota limits
   - **Antigravity** - Local server monitoring by Antigravity IDE
+  - **Z.AI Coding Plan** - Time-window based & tool usage based quotas
 - **Features**
   - ✅ Subscription settings available. You can set custom costs for each provider and account.
+  - All of the providers here should have Subscription settings.
 - **Warnings**
   - **NEVER** remove subscription settings from Quota-based providers
 
@@ -76,6 +78,13 @@ Quit (⌘Q)
 - Header Format: `Quota Status: $XXX/m` (if subscriptions exist)
 - Header Format: `Quota Status` (if no subscriptions)
 - Example: `Quota Status: $288/m` or `Quota Status`
+
+### Formatting time
+- Absolute time:
+  - Standard time format: `2026-01-31 14:23 PST`
+  - All times are displayed in the user's local timezone
+- Relative time:
+  - Standard relative format: `in 5h 23m` or `3h 12m ago`
 
 ### Rules
 - **NEVER** change the menu group title formats without explicit approval

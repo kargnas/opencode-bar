@@ -95,6 +95,7 @@ struct SwiftUIProviderAlertView: View {
         case .openCode, .openCodeZen: return "chevron.left.forwardslash.chevron.right"
         case .antigravity: return "arrow.up.circle"
         case .kimi: return "k.circle"
+        case .zaiCodingPlan: return "globe"
         }
     }
 }

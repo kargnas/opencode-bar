@@ -20,13 +20,15 @@
 		6C4146861DE2C13836DE1D35 /* CopilotHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1085A77EF4A58E5B5EC71B /* CopilotHistoryService.swift */; };
 		6E20731420660405A73659A3 /* ModernApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6279E48B0F50E99C3B23C4F3 /* ModernApp.swift */; };
 		87297CDD8B65F7EF0BC5D650 /* ProviderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F40F1AC76A49A9B9DF74B0 /* ProviderManager.swift */; };
-		8EA90F9E26F29FC7938D2924 /* ProviderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDA856BBC854D3FF310EA51 /* ProviderViewModel.swift */; };
+		8EA90F9E26F29FC7938D2924 /* ViewModels/ProviderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDA856BBC854D3FF310EA51 /* ViewModels/ProviderViewModel.swift */; };
 		A14AF9AC6A646726B7C94978 /* MenuResultBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6CE62C58ECA852F25FEF30 /* MenuResultBuilder.swift */; };
 		A1BED4A5CA1FEC2DADC461C2 /* MenuDesignTokenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8493409A9188CFF5B73D5B3 /* MenuDesignTokenTests.swift */; };
 		A33333333333333333333333 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44444444444444444444444 /* AppDelegate.swift */; };
-		AM1111111111111111111111 /* AppMigrationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AM2222222222222222222222 /* AppMigrationHelper.swift */; };
+		A454D8C22F30544900E355E3 /* MenuBarExtraAccess in Frameworks */ = {isa = PBXBuildFile; productRef = MBA2222222222222222222222 /* MenuBarExtraAccess */; };
+		A454D8C42F30548900E355E3 /* ZaiCodingPlanProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A454D8C32F30548900E355E3 /* ZaiCodingPlanProvider.swift */; };
 		A55555555555555555555555 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A66666666666666666666666 /* Assets.xcassets */; };
 		AD95EBD6AE3134DF4C797577 /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DDC1B4DE6B5118CE4AE8F82 /* ClaudeProvider.swift */; };
+		AM1111111111111111111111 /* AppMigrationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AM2222222222222222222222 /* AppMigrationHelper.swift */; };
 		B248782F500D3B09E0CE5AC8 /* ProviderUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4158558E58B121A9D13C48C3 /* ProviderUsage.swift */; };
 		B58BAD3BFD97973070A2A892 /* MenuResultBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54353FD130DDE0500F6B367F /* MenuResultBuilderTests.swift */; };
 		BCDE4599B74AF7A799CE1D /* StatusBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0CA52627AF05BD67B56E /* StatusBarIconView.swift */; };
@@ -40,6 +42,7 @@
 		F08C918116D7B3024B68C81A /* MenuDesignToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C7C9FDB4600114F02B2915 /* MenuDesignToken.swift */; };
 		F11111111111111111111111 /* UsagePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22222222222222222222222 /* UsagePredictor.swift */; };
 		F35960B456C28D71BE7575A5 /* GeminiCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EC3B683EB6892E4F9C8316 /* GeminiCLIProvider.swift */; };
+		KI1111111111111111111111 /* KimiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = KI2222222222222222222222 /* KimiProvider.swift */; };
 		ME1111111111111111111111 /* MenuEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = ME2222222222222222222222 /* MenuEnums.swift */; };
 		OC1111111111111111111111 /* OpenCodeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OC2222222222222222222222 /* OpenCodeProvider.swift */; };
 		OR1111111111111111111111 /* OpenRouterProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OR2222222222222222222222 /* OpenRouterProvider.swift */; };
@@ -47,7 +50,6 @@
 		OR6666666666666666666666 /* openrouter_credits_response.json in Resources */ = {isa = PBXBuildFile; fileRef = OR5555555555555555555555 /* openrouter_credits_response.json */; };
 		OR8888888888888888888888 /* openrouter_key_response.json in Resources */ = {isa = PBXBuildFile; fileRef = OR7777777777777777777777 /* openrouter_key_response.json */; };
 		OZ1111111111111111111111 /* OpenCodeZenProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OZ2222222222222222222222 /* OpenCodeZenProvider.swift */; };
-		KI1111111111111111111111 /* KimiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = KI2222222222222222222222 /* KimiProvider.swift */; };
 		PMB111111111111111111111 /* ProviderMenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = PMB222222222222222222222 /* ProviderMenuBuilder.swift */; };
 		PR1111111111111111111111 /* ProviderResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR2222222222222222222222 /* ProviderResult.swift */; };
 		SP1111111111111111111111 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = SP2222222222222222222222 /* Sparkle */; };
@@ -116,15 +118,16 @@
 		54353FD130DDE0500F6B367F /* MenuResultBuilderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MenuResultBuilderTests.swift; sourceTree = "<group>"; };
 		6279E48B0F50E99C3B23C4F3 /* ModernApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModernApp.swift; sourceTree = "<group>"; };
 		76783C44AA2329AE3FA7E981 /* CodexProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodexProvider.swift; sourceTree = "<group>"; };
-		8BDA856BBC854D3FF310EA51 /* ProviderViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ViewModels/ProviderViewModel.swift; sourceTree = "<group>"; };
+		8BDA856BBC854D3FF310EA51 /* ViewModels/ProviderViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ViewModels/ProviderViewModel.swift; sourceTree = "<group>"; };
 		9B1085A77EF4A58E5B5EC71B /* CopilotHistoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CopilotHistoryService.swift; sourceTree = "<group>"; };
 		A44444444444444444444444 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		AM2222222222222222222222 /* AppMigrationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMigrationHelper.swift; sourceTree = "<group>"; };
+		A454D8C32F30548900E355E3 /* ZaiCodingPlanProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZaiCodingPlanProvider.swift; sourceTree = "<group>"; };
 		A66666666666666666666666 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A77777777777777777777777 /* OpenCode Bar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OpenCode Bar.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A88888888888888888888888 /* CopilotMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CopilotMonitor.entitlements; sourceTree = "<group>"; };
 		A99999999999999999999999 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AD0CA52627AF05BD67B56E /* StatusBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarIconView.swift; sourceTree = "<group>"; };
+		AM2222222222222222222222 /* AppMigrationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMigrationHelper.swift; sourceTree = "<group>"; };
 		B63B85E0F2A8C591D7E26AE2 /* GeminiCLIProviderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GeminiCLIProviderTests.swift; sourceTree = "<group>"; };
 		BE39D5663A7ABADC7E54B91D /* ProviderProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderProtocol.swift; sourceTree = "<group>"; };
 		C1C7C9FDB4600114F02B2915 /* MenuDesignToken.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MenuDesignToken.swift; sourceTree = "<group>"; };
@@ -138,6 +141,7 @@
 		F1DA8E47F4CFEFC3571708AD /* AntigravityProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AntigravityProvider.swift; sourceTree = "<group>"; };
 		F22222222222222222222222 /* UsagePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsagePredictor.swift; sourceTree = "<group>"; };
 		F4AE672516E564CC52739BD9 /* CopilotProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CopilotProvider.swift; sourceTree = "<group>"; };
+		KI2222222222222222222222 /* KimiProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KimiProvider.swift; sourceTree = "<group>"; };
 		ME2222222222222222222222 /* MenuEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuEnums.swift; sourceTree = "<group>"; };
 		OC2222222222222222222222 /* OpenCodeProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenCodeProvider.swift; sourceTree = "<group>"; };
 		OR2222222222222222222222 /* OpenRouterProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenRouterProvider.swift; sourceTree = "<group>"; };
@@ -145,7 +149,6 @@
 		OR5555555555555555555555 /* openrouter_credits_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = openrouter_credits_response.json; sourceTree = "<group>"; };
 		OR7777777777777777777777 /* openrouter_key_response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = openrouter_key_response.json; sourceTree = "<group>"; };
 		OZ2222222222222222222222 /* OpenCodeZenProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenCodeZenProvider.swift; sourceTree = "<group>"; };
-		KI2222222222222222222222 /* KimiProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KimiProvider.swift; sourceTree = "<group>"; };
 		PMB222222222222222222222 /* ProviderMenuBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderMenuBuilder.swift; sourceTree = "<group>"; };
 		PR2222222222222222222222 /* ProviderResult.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderResult.swift; sourceTree = "<group>"; };
 		T22222222222222222222222 /* ProviderUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderUsageTests.swift; sourceTree = "<group>"; };
@@ -161,6 +164,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A454D8C22F30544900E355E3 /* MenuBarExtraAccess in Frameworks */,
 				SP1111111111111111111111 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -214,13 +218,13 @@
 			children = (
 				2DD8824FD8DE388CEE314F92 /* ModernStatusBarIconView.swift */,
 			);
-			name = SwiftUI;
 			path = SwiftUI;
 			sourceTree = "<group>";
 		};
 		4D0546BDF4C7CD74746285DF /* Providers */ = {
 			isa = PBXGroup;
 			children = (
+				A454D8C32F30548900E355E3 /* ZaiCodingPlanProvider.swift */,
 				06EC3B683EB6892E4F9C8316 /* GeminiCLIProvider.swift */,
 				4DDC1B4DE6B5118CE4AE8F82 /* ClaudeProvider.swift */,
 				76783C44AA2329AE3FA7E981 /* CodexProvider.swift */,
@@ -231,7 +235,6 @@
 				OZ2222222222222222222222 /* OpenCodeZenProvider.swift */,
 				KI2222222222222222222222 /* KimiProvider.swift */,
 			);
-			name = Providers;
 			path = Providers;
 			sourceTree = "<group>";
 		};
@@ -322,7 +325,7 @@
 		EC7EB390754865EBC783E08F /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
-				8BDA856BBC854D3FF310EA51 /* ProviderViewModel.swift */,
+				8BDA856BBC854D3FF310EA51 /* ViewModels/ProviderViewModel.swift */,
 			);
 			name = ViewModels;
 			sourceTree = "<group>";
@@ -532,6 +535,7 @@
 				PR1111111111111111111111 /* ProviderResult.swift in Sources */,
 				A33333333333333333333333 /* AppDelegate.swift in Sources */,
 				AM1111111111111111111111 /* AppMigrationHelper.swift in Sources */,
+				A454D8C42F30548900E355E3 /* ZaiCodingPlanProvider.swift in Sources */,
 				BCDE4599B74AF7A799CE1D /* StatusBarIconView.swift in Sources */,
 				ME1111111111111111111111 /* MenuEnums.swift in Sources */,
 				D11111111111111111111111 /* StatusBarController.swift in Sources */,
@@ -557,7 +561,7 @@
 				PMB111111111111111111111 /* ProviderMenuBuilder.swift in Sources */,
 				F08C918116D7B3024B68C81A /* MenuDesignToken.swift in Sources */,
 				A14AF9AC6A646726B7C94978 /* MenuResultBuilder.swift in Sources */,
-				8EA90F9E26F29FC7938D2924 /* ProviderViewModel.swift in Sources */,
+				8EA90F9E26F29FC7938D2924 /* ViewModels/ProviderViewModel.swift in Sources */,
 				6E20731420660405A73659A3 /* ModernApp.swift in Sources */,
 				CB4724DEB2377B892281E8CD /* ModernStatusBarIconView.swift in Sources */,
 				E92DAE297D071D146591E201 /* MultiProviderStatusBarIconView.swift in Sources */,

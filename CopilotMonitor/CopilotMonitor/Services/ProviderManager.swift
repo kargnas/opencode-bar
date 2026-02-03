@@ -31,6 +31,7 @@ actor ProviderManager {
             ClaudeProvider(),
             CodexProvider(),
             GeminiCLIProvider(),
+            ZaiCodingPlanProvider(),
             OpenRouterProvider(),
             AntigravityProvider(),
             OpenCodeZenProvider(),

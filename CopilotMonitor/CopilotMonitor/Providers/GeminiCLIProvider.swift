@@ -50,7 +50,8 @@ final class GeminiCLIProvider: ProviderProtocol {
                 let quotaResult = try await fetchQuotaForAccount(
                     refreshToken: account.refreshToken,
                     accountIndex: account.index,
-                    email: account.email
+                    email: account.email,
+                    projectId: account.projectId
                 )
                 geminiAccountQuotas.append(quotaResult)
                 overallMinPercentage = min(overallMinPercentage, quotaResult.remainingPercentage)
@@ -82,7 +83,7 @@ final class GeminiCLIProvider: ProviderProtocol {
 
     // MARK: - Private Helpers
 
-    private func fetchQuotaForAccount(refreshToken: String, accountIndex: Int, email: String) async throws -> GeminiAccountQuota {
+    private func fetchQuotaForAccount(refreshToken: String, accountIndex: Int, email: String, projectId: String) async throws -> GeminiAccountQuota {
         guard let accessToken = await tokenManager.refreshGeminiAccessToken(refreshToken: refreshToken) else {
             throw ProviderError.authenticationFailed("Unable to refresh token for account #\(accountIndex + 1)")
         }
@@ -95,7 +96,8 @@ final class GeminiCLIProvider: ProviderProtocol {
         request.httpMethod = "POST"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = "{}".data(using: .utf8)
+        // project parameter is required to get all models including gemini-3 variants
+        request.httpBody = "{\"project\":\"\(projectId)\"}".data(using: .utf8)
 
         let (data, response) = try await session.data(for: request)
 
@@ -118,24 +120,43 @@ final class GeminiCLIProvider: ProviderProtocol {
         }
 
         var modelBreakdown: [String: Double] = [:]
+        var modelResetTimes: [String: Date] = [:]
         var minFraction = 1.0
+        var earliestReset: Date?
+
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let iso8601FormatterNoFrac = ISO8601DateFormatter()
+        iso8601FormatterNoFrac.formatOptions = [.withInternetDateTime]
 
         for bucket in quotaResponse.buckets {
             let percentage = bucket.remainingFraction * 100.0
             modelBreakdown[bucket.modelId] = percentage
             minFraction = min(minFraction, bucket.remainingFraction)
+
+            if let resetDate = iso8601Formatter.date(from: bucket.resetTime)
+                ?? iso8601FormatterNoFrac.date(from: bucket.resetTime) {
+                modelResetTimes[bucket.modelId] = resetDate
+                if let current = earliestReset {
+                    earliestReset = min(current, resetDate)
+                } else {
+                    earliestReset = resetDate
+                }
+            }
         }
 
         let remainingPercentage = minFraction * 100.0
 
-        logger.info("Gemini CLI account #\(accountIndex + 1) (\(email)): \(remainingPercentage)% remaining")
+        logger.info("Gemini CLI account #\(accountIndex + 1) (\(email)): \(remainingPercentage)% remaining, resets: \(earliestReset?.description ?? "unknown")")
 
         return GeminiAccountQuota(
             accountIndex: accountIndex,
             email: email,
             remainingPercentage: remainingPercentage,
             modelBreakdown: modelBreakdown,
-            authSource: "~/.config/opencode/antigravity-accounts.json"
+            authSource: "~/.config/opencode/antigravity-accounts.json",
+            earliestReset: earliestReset,
+            modelResetTimes: modelResetTimes
         )
     }
 }

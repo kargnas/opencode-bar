@@ -11,6 +11,10 @@ struct GeminiAccountQuota: Codable {
     let remainingPercentage: Double
     let modelBreakdown: [String: Double]
     let authSource: String
+    /// Earliest reset time among all model quotas for this account
+    let earliestReset: Date?
+    /// Reset time for each model (key: modelId, value: reset date)
+    let modelResetTimes: [String: Date]
 }
 
 struct DetailedUsage {
@@ -71,6 +75,21 @@ struct DetailedUsage {
     // Multiple Gemini accounts support
     let geminiAccounts: [GeminiAccountQuota]?
 
+    // Z.ai monitoring fields
+    let tokenUsagePercent: Double?
+    let tokenUsageReset: Date?
+    let tokenUsageUsed: Int?
+    let tokenUsageTotal: Int?
+    let mcpUsagePercent: Double?
+    let mcpUsageReset: Date?
+    let mcpUsageUsed: Int?
+    let mcpUsageTotal: Int?
+    let modelUsageTokens: Int?
+    let modelUsageCalls: Int?
+    let toolNetworkSearchCount: Int?
+    let toolWebReadCount: Int?
+    let toolZreadCount: Int?
+
     // Copilot-specific fields (overage tracking)
     let copilotOverageCost: Double?
     let copilotOverageRequests: Double?
@@ -112,6 +131,19 @@ struct DetailedUsage {
         creditsTotal: Double? = nil,
         authSource: String? = nil,
         geminiAccounts: [GeminiAccountQuota]? = nil,
+        tokenUsagePercent: Double? = nil,
+        tokenUsageReset: Date? = nil,
+        tokenUsageUsed: Int? = nil,
+        tokenUsageTotal: Int? = nil,
+        mcpUsagePercent: Double? = nil,
+        mcpUsageReset: Date? = nil,
+        mcpUsageUsed: Int? = nil,
+        mcpUsageTotal: Int? = nil,
+        modelUsageTokens: Int? = nil,
+        modelUsageCalls: Int? = nil,
+        toolNetworkSearchCount: Int? = nil,
+        toolWebReadCount: Int? = nil,
+        toolZreadCount: Int? = nil,
         copilotOverageCost: Double? = nil,
         copilotOverageRequests: Double? = nil,
         copilotUsedRequests: Int? = nil,
@@ -151,6 +183,19 @@ struct DetailedUsage {
         self.creditsTotal = creditsTotal
         self.authSource = authSource
         self.geminiAccounts = geminiAccounts
+        self.tokenUsagePercent = tokenUsagePercent
+        self.tokenUsageReset = tokenUsageReset
+        self.tokenUsageUsed = tokenUsageUsed
+        self.tokenUsageTotal = tokenUsageTotal
+        self.mcpUsagePercent = mcpUsagePercent
+        self.mcpUsageReset = mcpUsageReset
+        self.mcpUsageUsed = mcpUsageUsed
+        self.mcpUsageTotal = mcpUsageTotal
+        self.modelUsageTokens = modelUsageTokens
+        self.modelUsageCalls = modelUsageCalls
+        self.toolNetworkSearchCount = toolNetworkSearchCount
+        self.toolWebReadCount = toolWebReadCount
+        self.toolZreadCount = toolZreadCount
         self.copilotOverageCost = copilotOverageCost
         self.copilotOverageRequests = copilotOverageRequests
         self.copilotUsedRequests = copilotUsedRequests
@@ -170,6 +215,10 @@ extension DetailedUsage: Codable {
         case sessions, messages, avgCostPerDay, email
         case dailyHistory, monthlyCost, creditsRemaining, creditsTotal
         case authSource, geminiAccounts
+        case tokenUsagePercent, tokenUsageReset, tokenUsageUsed, tokenUsageTotal
+        case mcpUsagePercent, mcpUsageReset, mcpUsageUsed, mcpUsageTotal
+        case modelUsageTokens, modelUsageCalls
+        case toolNetworkSearchCount, toolWebReadCount, toolZreadCount
         case copilotOverageCost, copilotOverageRequests, copilotUsedRequests, copilotLimitRequests, copilotQuotaResetDateUTC
     }
 
@@ -208,6 +257,19 @@ extension DetailedUsage: Codable {
         creditsTotal = try container.decodeIfPresent(Double.self, forKey: .creditsTotal)
         authSource = try container.decodeIfPresent(String.self, forKey: .authSource)
         geminiAccounts = try container.decodeIfPresent([GeminiAccountQuota].self, forKey: .geminiAccounts)
+        tokenUsagePercent = try container.decodeIfPresent(Double.self, forKey: .tokenUsagePercent)
+        tokenUsageReset = try container.decodeIfPresent(Date.self, forKey: .tokenUsageReset)
+        tokenUsageUsed = try container.decodeIfPresent(Int.self, forKey: .tokenUsageUsed)
+        tokenUsageTotal = try container.decodeIfPresent(Int.self, forKey: .tokenUsageTotal)
+        mcpUsagePercent = try container.decodeIfPresent(Double.self, forKey: .mcpUsagePercent)
+        mcpUsageReset = try container.decodeIfPresent(Date.self, forKey: .mcpUsageReset)
+        mcpUsageUsed = try container.decodeIfPresent(Int.self, forKey: .mcpUsageUsed)
+        mcpUsageTotal = try container.decodeIfPresent(Int.self, forKey: .mcpUsageTotal)
+        modelUsageTokens = try container.decodeIfPresent(Int.self, forKey: .modelUsageTokens)
+        modelUsageCalls = try container.decodeIfPresent(Int.self, forKey: .modelUsageCalls)
+        toolNetworkSearchCount = try container.decodeIfPresent(Int.self, forKey: .toolNetworkSearchCount)
+        toolWebReadCount = try container.decodeIfPresent(Int.self, forKey: .toolWebReadCount)
+        toolZreadCount = try container.decodeIfPresent(Int.self, forKey: .toolZreadCount)
         copilotOverageCost = try container.decodeIfPresent(Double.self, forKey: .copilotOverageCost)
         copilotOverageRequests = try container.decodeIfPresent(Double.self, forKey: .copilotOverageRequests)
         copilotUsedRequests = try container.decodeIfPresent(Int.self, forKey: .copilotUsedRequests)
@@ -250,6 +312,19 @@ extension DetailedUsage: Codable {
         try container.encodeIfPresent(creditsTotal, forKey: .creditsTotal)
         try container.encodeIfPresent(authSource, forKey: .authSource)
         try container.encodeIfPresent(geminiAccounts, forKey: .geminiAccounts)
+        try container.encodeIfPresent(tokenUsagePercent, forKey: .tokenUsagePercent)
+        try container.encodeIfPresent(tokenUsageReset, forKey: .tokenUsageReset)
+        try container.encodeIfPresent(tokenUsageUsed, forKey: .tokenUsageUsed)
+        try container.encodeIfPresent(tokenUsageTotal, forKey: .tokenUsageTotal)
+        try container.encodeIfPresent(mcpUsagePercent, forKey: .mcpUsagePercent)
+        try container.encodeIfPresent(mcpUsageReset, forKey: .mcpUsageReset)
+        try container.encodeIfPresent(mcpUsageUsed, forKey: .mcpUsageUsed)
+        try container.encodeIfPresent(mcpUsageTotal, forKey: .mcpUsageTotal)
+        try container.encodeIfPresent(modelUsageTokens, forKey: .modelUsageTokens)
+        try container.encodeIfPresent(modelUsageCalls, forKey: .modelUsageCalls)
+        try container.encodeIfPresent(toolNetworkSearchCount, forKey: .toolNetworkSearchCount)
+        try container.encodeIfPresent(toolWebReadCount, forKey: .toolWebReadCount)
+        try container.encodeIfPresent(toolZreadCount, forKey: .toolZreadCount)
         try container.encodeIfPresent(copilotOverageCost, forKey: .copilotOverageCost)
         try container.encodeIfPresent(copilotOverageRequests, forKey: .copilotOverageRequests)
         try container.encodeIfPresent(copilotUsedRequests, forKey: .copilotUsedRequests)
@@ -276,6 +351,12 @@ extension DetailedUsage {
             || dailyHistory != nil || monthlyCost != nil
             || creditsRemaining != nil || creditsTotal != nil
             || authSource != nil || geminiAccounts != nil
+            || tokenUsagePercent != nil || tokenUsageReset != nil
+            || tokenUsageUsed != nil || tokenUsageTotal != nil
+            || mcpUsagePercent != nil || mcpUsageReset != nil
+            || mcpUsageUsed != nil || mcpUsageTotal != nil
+            || modelUsageTokens != nil || modelUsageCalls != nil
+            || toolNetworkSearchCount != nil || toolWebReadCount != nil || toolZreadCount != nil
             || copilotOverageCost != nil || copilotOverageRequests != nil
             || copilotUsedRequests != nil || copilotLimitRequests != nil
             || copilotQuotaResetDateUTC != nil

@@ -31,11 +31,81 @@ struct OpenCodeAuth: Codable {
     let openrouter: APIKey?
     let opencode: APIKey?
     let kimiForCoding: APIKey?
+    let zaiCodingPlan: APIKey?
 
     enum CodingKeys: String, CodingKey {
         case anthropic, openai, openrouter, opencode
         case githubCopilot = "github-copilot"
         case kimiForCoding = "kimi-for-coding"
+        case zaiCodingPlan = "zai-coding-plan"
+    }
+
+    init(
+        anthropic: OAuth?,
+        openai: OAuth?,
+        githubCopilot: OAuth?,
+        openrouter: APIKey?,
+        opencode: APIKey?,
+        kimiForCoding: APIKey?,
+        zaiCodingPlan: APIKey?
+    ) {
+        self.anthropic = anthropic
+        self.openai = openai
+        self.githubCopilot = githubCopilot
+        self.openrouter = openrouter
+        self.opencode = opencode
+        self.kimiForCoding = kimiForCoding
+        self.zaiCodingPlan = zaiCodingPlan
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        anthropic = try container.decodeIfPresent(OAuth.self, forKey: .anthropic)
+        openai = try container.decodeIfPresent(OAuth.self, forKey: .openai)
+        githubCopilot = try container.decodeIfPresent(OAuth.self, forKey: .githubCopilot)
+        openrouter = try container.decodeIfPresent(APIKey.self, forKey: .openrouter)
+        opencode = try container.decodeIfPresent(APIKey.self, forKey: .opencode)
+        kimiForCoding = try container.decodeIfPresent(APIKey.self, forKey: .kimiForCoding)
+        zaiCodingPlan = try container.decodeIfPresent(APIKey.self, forKey: .zaiCodingPlan)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(anthropic, forKey: .anthropic)
+        try container.encodeIfPresent(openai, forKey: .openai)
+        try container.encodeIfPresent(githubCopilot, forKey: .githubCopilot)
+        try container.encodeIfPresent(openrouter, forKey: .openrouter)
+        try container.encodeIfPresent(opencode, forKey: .opencode)
+        try container.encodeIfPresent(kimiForCoding, forKey: .kimiForCoding)
+        try container.encodeIfPresent(zaiCodingPlan, forKey: .zaiCodingPlan)
+    }
+}
+
+/// Codex CLI native auth structure for ~/.codex/auth.json
+/// Different format from OpenCode auth - used as fallback when OpenCode has no OpenAI token
+struct CodexAuth: Codable {
+    struct Tokens: Codable {
+        let accessToken: String?
+        let accountId: String?
+        let idToken: String?
+        let refreshToken: String?
+
+        enum CodingKeys: String, CodingKey {
+            case accessToken = "access_token"
+            case accountId = "account_id"
+            case idToken = "id_token"
+            case refreshToken = "refresh_token"
+        }
+    }
+
+    let openaiAPIKey: String?
+    let tokens: Tokens?
+    let lastRefresh: String?
+
+    enum CodingKeys: String, CodingKey {
+        case openaiAPIKey = "OPENAI_API_KEY"
+        case tokens
+        case lastRefresh = "last_refresh"
     }
 }
 
@@ -45,7 +115,6 @@ struct AntigravityAccounts: Codable {
         let email: String
         let refreshToken: String
         let projectId: String
-        let rateLimitResetTimes: [String: Int64]?
     }
 
     let version: Int
@@ -163,6 +232,42 @@ final class TokenManager: @unchecked Sendable {
         }
     }
 
+    // MARK: - Codex Native Auth File Reading
+
+    private var cachedCodexAuth: CodexAuth?
+    private var codexCacheTimestamp: Date?
+
+    func readCodexAuth() -> CodexAuth? {
+        return queue.sync {
+            if let cached = cachedCodexAuth,
+               let timestamp = codexCacheTimestamp,
+               Date().timeIntervalSince(timestamp) < cacheValiditySeconds {
+                return cached
+            }
+
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser
+            let codexAuthPath = homeDir
+                .appendingPathComponent(".codex")
+                .appendingPathComponent("auth.json")
+
+            guard FileManager.default.fileExists(atPath: codexAuthPath.path) else {
+                return nil
+            }
+
+            do {
+                let data = try Data(contentsOf: codexAuthPath)
+                let auth = try JSONDecoder().decode(CodexAuth.self, from: data)
+                cachedCodexAuth = auth
+                codexCacheTimestamp = Date()
+                logger.info("Successfully loaded Codex native auth from: \(codexAuthPath.path)")
+                return auth
+            } catch {
+                logger.warning("Failed to parse Codex auth at \(codexAuthPath.path): \(error.localizedDescription)")
+                return nil
+            }
+        }
+    }
+
     // MARK: - Antigravity Accounts File Reading
 
     /// Thread-safe read of Antigravity accounts with caching
@@ -208,11 +313,32 @@ final class TokenManager: @unchecked Sendable {
         return auth.anthropic?.access
     }
 
-    /// Gets OpenAI access token from OpenCode auth
-    /// - Returns: Access token string if available, nil otherwise
+    /// Gets OpenAI access token, first from OpenCode auth, then falling back to Codex CLI native auth (~/.codex/auth.json)
     func getOpenAIAccessToken() -> String? {
-        guard let auth = readOpenCodeAuth() else { return nil }
-        return auth.openai?.access
+        // Primary: OpenCode auth
+        if let auth = readOpenCodeAuth(), let access = auth.openai?.access {
+            return access
+        }
+        // Fallback: Codex CLI native auth (~/.codex/auth.json)
+        if let codexAuth = readCodexAuth(), let access = codexAuth.tokens?.accessToken {
+            logger.info("Using Codex native auth (~/.codex/auth.json) as fallback for OpenAI access token")
+            return access
+        }
+        return nil
+    }
+
+    /// Gets OpenAI account ID, first from OpenCode auth, then falling back to Codex CLI native auth
+    func getOpenAIAccountId() -> String? {
+        // Primary: OpenCode auth
+        if let auth = readOpenCodeAuth(), let accountId = auth.openai?.accountId {
+            return accountId
+        }
+        // Fallback: Codex CLI native auth (~/.codex/auth.json)
+        if let codexAuth = readCodexAuth(), let accountId = codexAuth.tokens?.accountId {
+            logger.info("Using Codex native auth (~/.codex/auth.json) as fallback for OpenAI account ID")
+            return accountId
+        }
+        return nil
     }
 
     /// Gets GitHub Copilot access token from OpenCode auth
@@ -316,6 +442,11 @@ final class TokenManager: @unchecked Sendable {
         return auth.kimiForCoding?.key
     }
 
+    func getZaiCodingPlanAPIKey() -> String? {
+        guard let auth = readOpenCodeAuth() else { return nil }
+        return auth.zaiCodingPlan?.key
+    }
+
     /// Gets Gemini refresh token from Antigravity accounts (active account)
     /// - Returns: Refresh token string if available, nil otherwise
     func getGeminiRefreshToken() -> String? {
@@ -339,11 +470,11 @@ final class TokenManager: @unchecked Sendable {
     }
 
     /// Gets all Gemini accounts from Antigravity accounts file
-    /// - Returns: Array of (index, email, refreshToken) tuples for all accounts
-    func getAllGeminiAccounts() -> [(index: Int, email: String, refreshToken: String)] {
+    /// - Returns: Array of (index, email, refreshToken, projectId) tuples for all accounts
+    func getAllGeminiAccounts() -> [(index: Int, email: String, refreshToken: String, projectId: String)] {
         guard let accounts = readAntigravityAccounts() else { return [] }
         return accounts.accounts.enumerated().map { index, account in
-            (index: index, email: account.email, refreshToken: account.refreshToken)
+            (index: index, email: account.email, refreshToken: account.refreshToken, projectId: account.projectId)
         }
     }
 
@@ -442,6 +573,7 @@ final class TokenManager: @unchecked Sendable {
         debugLines.append(String(repeating: "─", count: 40))
 
         // 0. XDG_DATA_HOME environment variable
+        let hasXdgDataHome = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]?.isEmpty == false
         if let xdgDataHome = ProcessInfo.processInfo.environment["XDG_DATA_HOME"], !xdgDataHome.isEmpty {
             debugLines.append("[XDG_DATA_HOME] SET: \(xdgDataHome)")
         } else {
@@ -457,13 +589,22 @@ final class TokenManager: @unchecked Sendable {
         for (index, authPath) in authPaths.enumerated() {
             let priority = index + 1
             let pathLabel: String
-            switch index {
-            case 0 where ProcessInfo.processInfo.environment["XDG_DATA_HOME"] != nil:
-                pathLabel = "$XDG_DATA_HOME/opencode"
-            case 0, 1:
-                pathLabel = "~/.local/share/opencode"
-            default:
-                pathLabel = "~/Library/Application Support/opencode"
+            if hasXdgDataHome {
+                switch index {
+                case 0:
+                    pathLabel = "$XDG_DATA_HOME/opencode"
+                case 1:
+                    pathLabel = "~/.local/share/opencode"
+                default:
+                    pathLabel = "~/Library/Application Support/opencode"
+                }
+            } else {
+                switch index {
+                case 0:
+                    pathLabel = "~/.local/share/opencode"
+                default:
+                    pathLabel = "~/Library/Application Support/opencode"
+                }
             }
 
             if fileManager.fileExists(atPath: authPath.path) {
@@ -527,6 +668,7 @@ final class TokenManager: @unchecked Sendable {
             debugLines.append("  [OpenRouter] \(auth.openrouter != nil ? "CONFIGURED" : "NOT CONFIGURED")")
             debugLines.append("  [OpenCode] \(auth.opencode != nil ? "CONFIGURED" : "NOT CONFIGURED")")
             debugLines.append("  [Kimi] \(auth.kimiForCoding != nil ? "CONFIGURED" : "NOT CONFIGURED")")
+            debugLines.append("  [Z.AI Coding Plan] \(auth.zaiCodingPlan != nil ? "CONFIGURED" : "NOT CONFIGURED")")
         } else {
             debugLines.append("  [auth.json] PARSE FAILED or NOT FOUND")
         }
@@ -537,6 +679,23 @@ final class TokenManager: @unchecked Sendable {
             debugLines.append("  [Antigravity] \(accounts.accounts.count) account(s), active index: \(accounts.activeIndex)\(invalidMarker)")
         } else {
             debugLines.append("  [Antigravity] NOT CONFIGURED")
+        }
+
+        // 5. Codex native auth (~/.codex/auth.json) - fallback for OpenAI token
+        debugLines.append("")
+        debugLines.append("Codex Native Auth (~/.codex/auth.json):")
+        let codexAuthPath = homeDir.appendingPathComponent(".codex").appendingPathComponent("auth.json")
+        if fileManager.fileExists(atPath: codexAuthPath.path) {
+            if let codexAuth = readCodexAuth() {
+                let hasToken = codexAuth.tokens?.accessToken != nil
+                let hasAccountId = codexAuth.tokens?.accountId != nil
+                let hasAPIKey = codexAuth.openaiAPIKey != nil
+                debugLines.append("  [EXISTS] token: \(hasToken ? "YES" : "NO"), accountId: \(hasAccountId ? "YES" : "NO"), apiKey: \(hasAPIKey ? "YES" : "NO")")
+            } else {
+                debugLines.append("  [PARSE FAILED]")
+            }
+        } else {
+            debugLines.append("  [NOT FOUND]")
         }
 
         debugLines.append(String(repeating: "─", count: 40))
@@ -552,6 +711,7 @@ final class TokenManager: @unchecked Sendable {
         debugLines.append("========== Environment Debug Info ==========")
 
         // 0. XDG_DATA_HOME environment variable
+        let hasXdgDataHome = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]?.isEmpty == false
         if let xdgDataHome = ProcessInfo.processInfo.environment["XDG_DATA_HOME"], !xdgDataHome.isEmpty {
             debugLines.append("[XDG_DATA_HOME] SET: \(xdgDataHome)")
         } else {
@@ -566,13 +726,22 @@ final class TokenManager: @unchecked Sendable {
         for (index, authPath) in authPaths.enumerated() {
             let priority = index + 1
             let pathLabel: String
-            switch index {
-            case 0 where ProcessInfo.processInfo.environment["XDG_DATA_HOME"] != nil:
-                pathLabel = "$XDG_DATA_HOME/opencode"
-            case 0, 1:
-                pathLabel = "~/.local/share/opencode"
-            default:
-                pathLabel = "~/Library/Application Support/opencode"
+            if hasXdgDataHome {
+                switch index {
+                case 0:
+                    pathLabel = "$XDG_DATA_HOME/opencode"
+                case 1:
+                    pathLabel = "~/.local/share/opencode"
+                default:
+                    pathLabel = "~/Library/Application Support/opencode"
+                }
+            } else {
+                switch index {
+                case 0:
+                    pathLabel = "~/.local/share/opencode"
+                default:
+                    pathLabel = "~/Library/Application Support/opencode"
+                }
             }
 
             if fileManager.fileExists(atPath: authPath.path) {
@@ -746,6 +915,14 @@ final class TokenManager: @unchecked Sendable {
             } else {
                 debugLines.append("[Kimi for Coding] NOT CONFIGURED")
             }
+
+            if let zaiCodingPlan = auth.zaiCodingPlan {
+                debugLines.append("[Z.AI Coding Plan] API Key Present")
+                debugLines.append("  - Key Length: \(zaiCodingPlan.key.count) chars")
+                debugLines.append("  - Key Preview: \(maskToken(zaiCodingPlan.key))")
+            } else {
+                debugLines.append("[Z.AI Coding Plan] NOT CONFIGURED")
+            }
         } else {
             debugLines.append("[auth.json] PARSE FAILED or NOT FOUND")
         }
@@ -762,6 +939,28 @@ final class TokenManager: @unchecked Sendable {
             }
         } else {
             debugLines.append("[Antigravity Accounts] NOT FOUND or PARSE FAILED")
+        }
+
+        // 7. Codex native auth (~/.codex/auth.json)
+        debugLines.append("---------- Codex Native Auth ----------")
+        let codexAuthPath = homeDir.appendingPathComponent(".codex").appendingPathComponent("auth.json")
+        if fileManager.fileExists(atPath: codexAuthPath.path) {
+            if let codexAuth = readCodexAuth() {
+                debugLines.append("[Codex Auth] EXISTS at \(codexAuthPath.path)")
+                if let tokens = codexAuth.tokens {
+                    debugLines.append("  - Access Token: \(tokens.accessToken != nil ? "\(tokens.accessToken!.count) chars" : "nil")")
+                    debugLines.append("  - Account ID: \(tokens.accountId ?? "nil")")
+                    debugLines.append("  - Refresh Token: \(tokens.refreshToken != nil ? "\(tokens.refreshToken!.count) chars" : "nil")")
+                } else {
+                    debugLines.append("  - Tokens: nil")
+                }
+                debugLines.append("  - OPENAI_API_KEY: \(codexAuth.openaiAPIKey != nil ? "SET" : "nil")")
+                debugLines.append("  - Last Refresh: \(codexAuth.lastRefresh ?? "nil")")
+            } else {
+                debugLines.append("[Codex Auth] PARSE FAILED at \(codexAuthPath.path)")
+            }
+        } else {
+            debugLines.append("[Codex Auth] NOT FOUND at \(codexAuthPath.path)")
         }
 
         debugLines.append("================================================")

@@ -288,6 +288,12 @@ func buildProviderSubmenu() -> [NSMenuItem] {
        - Solution: Create explicit display order array or use sorted keys when iterating
        - Example: `let providerDisplayOrder = ["opencode_zen", "gemini_cli", "claude", "openrouter", "antigravity"]`
        - Pattern: Define display order independently of data source to maintain consistent UI
+   - **Z.AI API Date Format**:
+       - Parameter Validation Error: Z.AI API returns 500 error when using milliseconds timestamp for `startTime`/`endTime`
+       - Requirement: API explicitly requires `yyyy-MM-dd HH:mm:ss` format string
+       - Fix: Use `DateFormatter` with `UTC` timezone instead of `Int64` timestamps
+       - Pattern: Always verify API time format requirements (timestamp vs ISO8601 vs custom string)
+       - Example: `dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"`
      - **Menu Item Reference Deadlock**:
         - Shared NSMenuItem Reference: Referencing the same NSMenuItem instance (like `predictionPeriodMenu`) from multiple submenus can cause deadlocks
         - Manifestation: Menu becomes unresponsive or hangs when clicking on submenu items
@@ -562,11 +568,21 @@ func buildProviderSubmenu() -> [NSMenuItem] {
         - Fix: Add `copilotQuotaResetDateUTC` field to DetailedUsage model and update encoding/decoding
         - Pattern: When adding provider-specific data, ensure Codable conformance includes all new fields
         - Example: CopilotProvider now passes `usage.quotaResetDateUTC` to DetailedUsage constructor
-   - **Test Model Alignment**:
-        - Test-Implementation Mismatch: Tests using wrong billing model (payAsYouGo vs quotaBased) cause assertion failures
-        - Example Failure: CodexProviderTests used payAsYouGo model while provider is quotaBased
-        - Fix: Update test models to match actual provider implementation (remaining/entitlement vs utilization/cost)
-        - Pattern: Verify test models match provider type when fixing provider bugs
-        - Validation: Check both assertions and expected field types (Int vs Double, optional vs required)
+    - **Test Model Alignment**:
+         - Test-Implementation Mismatch: Tests using wrong billing model (payAsYouGo vs quotaBased) cause assertion failures
+         - Example Failure: CodexProviderTests used payAsYouGo model while provider is quotaBased
+         - Fix: Update test models to match actual provider implementation (remaining/entitlement vs utilization/cost)
+         - Pattern: Verify test models match provider type when fixing provider bugs
+         - Validation: Check both assertions and expected field types (Int vs Double, optional vs required)
+    - **Code Signing Timestamp Service Retry**:
+       - Timestamp Service Failures: `codesign --timestamp` may fail due to external service unavailability in CI/CD
+       - Build Impact: Xcode archive and code signing operations fail when timestamp service is down
+       - Solution: Implement retry logic with exponential delays for both build and signing stages
+       - Retry Pattern:
+         - Build: Max 3 retries with 30s delay between attempts
+         - Signing: Max 3 retries with 10s delay between attempts
+         - Function: Create `sign_with_retry()` wrapper function for all codesign calls
+       - Example: GitHub Actions workflow uses for-loop with attempt counter and sleep delays
+       - Benefit: Improves CI/CD reliability when external timestamp services experience temporary outages
 
    <!-- opencode:reflection:end -->

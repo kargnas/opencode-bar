@@ -28,8 +28,8 @@
 
 ### Supported Providers (Auto-detected from OpenCode)
 
-| Provider | Type | Key Metrics |
-|----------|------|-------------|
+| Provider | Type | Key Metrics | Additional Details |
+|----------|------|-------------|--------------------|
 | **OpenRouter** | Pay-as-you-go | Credits balance, daily/weekly/monthly cost |
 | **OpenCode Zen** | Pay-as-you-go | Daily history (30 days), model breakdown |
 | **GitHub Copilot Add-on** | Pay-as-you-go | Usage-based billing after exceeding quota |
@@ -37,8 +37,14 @@
 | **Codex** | Quota-based | Primary/Secondary quotas, plan type |
 | **Gemini CLI** | Quota-based | Per-model quotas, multi-account support |
 | **Kimi for Coding (Kimi K2.5)** | Quota-based | Usage limits, membership level, reset time |
+| **Z.AI Coding Plan** | Quota-based | Token/MCP quotas, model usage, tool usage (24h) |
 | **Antigravity** | Quota-based | Local language server monitoring |
 | **GitHub Copilot** | Quota-based | Daily history, overage tracking |
+
+### Custom Providers
+
+- **Antigravity**: `NoeFabris/opencode-antigravity-auth`
+- **Claude**: `anomalyco/opencode-anthropic-auth`
 
 ## Features
 
@@ -67,9 +73,21 @@
 - **Parallel Fetching**: All providers update simultaneously for speed
 - **Auto Updates**: Seamless background updates via Sparkle framework
 
+### Bonus
+- **Support additional auth methods**
+  - **Codex for Mac** - Auto-detected through `~/.codex/auth.json`
+  - **Codex CLI** - Auto-detected through `~/.codex/auth.json`
+
 ## Installation
 
-### Download (Recommended)
+### Homebrew (Recommended)
+
+```bash
+brew tap kargnas/opencode-bar
+brew install --cask opencode-bar
+```
+
+### Download
 
 Download the latest `.dmg` file from the [**Releases**](https://github.com/opgginc/opencode-bar/releases/latest) page.
 
@@ -233,6 +251,7 @@ Quota Status: $219/m
   Copilot          0%        ▸
   Claude           60%       ▸
   Codex            100%      ▸
+  Z.AI Coding Plan 99%       ▸
   Gemini CLI (#1)  100%      ▸
 ─────────────────────────────
 Predicted EOM: $451
