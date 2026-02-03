@@ -41,6 +41,11 @@
 | **Antigravity** | Quota-based | Local language server monitoring |
 | **GitHub Copilot** | Quota-based | Daily history, overage tracking |
 
+### Custom Providers
+
+- **Antigravity**: `NoeFabris/opencode-antigravity-auth`
+- **Claude**: `anomalyco/opencode-anthropic-auth`
+
 ## Features
 
 ### Automatic Provider Detection
