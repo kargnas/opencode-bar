@@ -158,42 +158,28 @@ extension StatusBarController {
             addSubscriptionItems(to: submenu, provider: .claude)
 
         case .codex:
+            // === Usage Windows ===
             if let primary = details.dailyUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "Primary: %.0f%%", primary))
-                submenu.addItem(item)
-                if let reset = details.primaryReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-
-                    let paceInfo = calculatePace(usage: primary, resetTime: reset, windowHours: 24)
-                    let paceItem = NSMenuItem()
-                    paceItem.view = createPaceView(paceInfo: paceInfo)
-                    submenu.addItem(paceItem)
-                }
+                // BUGFIX: Codex primary window is 5 hours, not 24
+                let items = createUsageWindowRow(
+                    label: "5h",
+                    usagePercent: primary,
+                    resetDate: details.primaryReset,
+                    windowHours: 5
+                )
+                items.forEach { submenu.addItem($0) }
             }
             if let secondary = details.secondaryUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "Secondary: %.0f%%", secondary))
-                submenu.addItem(item)
-                if let reset = details.secondaryReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-
-                    let paceInfo = calculatePace(usage: secondary, resetTime: reset, windowHours: 24)
-                    let paceItem = NSMenuItem()
-                    paceItem.view = createPaceView(paceInfo: paceInfo)
-                    submenu.addItem(paceItem)
-                }
+                let items = createUsageWindowRow(
+                    label: "Weekly",
+                    usagePercent: secondary,
+                    resetDate: details.secondaryReset,
+                    windowHours: 168
+                )
+                items.forEach { submenu.addItem($0) }
             }
+
+            // === Credits & Plan ===
             submenu.addItem(NSMenuItem.separator())
             if let plan = details.planType {
                 let item = NSMenuItem()
@@ -206,6 +192,7 @@ extension StatusBarController {
                 submenu.addItem(item)
             }
 
+            // === Subscription ===
             addSubscriptionItems(to: submenu, provider: .codex)
 
         case .geminiCLI:
