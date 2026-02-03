@@ -22,10 +22,6 @@
 
 ---
 
-## Overview
-
-**OpenCode Bar** automatically detects and monitors all AI providers registered in your [OpenCode](https://opencode.ai) configuration. No manual setup required - just install and see your usage across all providers in one unified dashboard.
-
 ## Installation
 
 ### Homebrew (Easy)
@@ -39,10 +35,9 @@ brew install --cask opencode-bar
 
 Download the latest `.dmg` file from the [**Releases**](https://github.com/opgginc/opencode-bar/releases/latest) page.
 
-> **Note**: If you see a "App is damaged" error, run this command in Terminal:
-> ```bash
-> xattr -cr "/Applications/OpenCode Bar.app"
-> ```
+## Overview
+
+**OpenCode Bar** automatically detects and monitors all AI providers registered in your [OpenCode](https://opencode.ai) configuration. No manual setup required - just install and see your usage across all providers in one unified dashboard.
 
 ### Supported Providers (Auto-detected from OpenCode)
 
