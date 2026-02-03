@@ -106,85 +106,55 @@ extension StatusBarController {
             submenu.addItem(historyItem)
 
         case .claude:
+            // === Usage Windows ===
             if let fiveHour = details.fiveHourUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "5h Window: %.0f%%", fiveHour))
-                submenu.addItem(item)
-                if let reset = details.fiveHourReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-
-                    let paceInfo = calculatePace(usage: fiveHour, resetTime: reset, windowHours: 5)
-                    let paceItem = NSMenuItem()
-                    paceItem.view = createPaceView(paceInfo: paceInfo)
-                    submenu.addItem(paceItem)
-                }
+                let items = createUsageWindowRow(
+                    label: "5h",
+                    usagePercent: fiveHour,
+                    resetDate: details.fiveHourReset,
+                    windowHours: 5
+                )
+                items.forEach { submenu.addItem($0) }
             }
             if let sevenDay = details.sevenDayUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "7d Window: %.0f%%", sevenDay))
-                submenu.addItem(item)
-                if let reset = details.sevenDayReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-
-                    let paceInfo = calculatePace(usage: sevenDay, resetTime: reset, windowHours: 168)
-                    let paceItem = NSMenuItem()
-                    paceItem.view = createPaceView(paceInfo: paceInfo)
-                    submenu.addItem(paceItem)
-                }
+                let items = createUsageWindowRow(
+                    label: "Weekly",
+                    usagePercent: sevenDay,
+                    resetDate: details.sevenDayReset,
+                    windowHours: 168
+                )
+                items.forEach { submenu.addItem($0) }
             }
+
+            // === Model Breakdown ===
             submenu.addItem(NSMenuItem.separator())
             if let sonnet = details.sonnetUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "Sonnet (7d): %.0f%%", sonnet))
-                submenu.addItem(item)
-                if let reset = details.sonnetReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-
-                    let paceInfo = calculatePace(usage: sonnet, resetTime: reset, windowHours: 168)
-                    let paceItem = NSMenuItem()
-                    paceItem.view = createPaceView(paceInfo: paceInfo)
-                    submenu.addItem(paceItem)
-                }
+                let items = createUsageWindowRow(
+                    label: "Sonnet (Weekly)",
+                    usagePercent: sonnet,
+                    resetDate: details.sonnetReset,
+                    windowHours: 168
+                )
+                items.forEach { submenu.addItem($0) }
             }
             if let opus = details.opusUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "Opus (7d): %.0f%%", opus))
-                submenu.addItem(item)
-                if let reset = details.opusReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-
-                    let paceInfo = calculatePace(usage: opus, resetTime: reset, windowHours: 168)
-                    let paceItem = NSMenuItem()
-                    paceItem.view = createPaceView(paceInfo: paceInfo)
-                    submenu.addItem(paceItem)
-                }
+                let items = createUsageWindowRow(
+                    label: "Opus (Weekly)",
+                    usagePercent: opus,
+                    resetDate: details.opusReset,
+                    windowHours: 168
+                )
+                items.forEach { submenu.addItem($0) }
             }
+
+            // === Extra Usage ===
             if let extraUsage = details.extraUsageEnabled {
                 let item = NSMenuItem()
                 item.view = createDisabledLabelView(text: "Extra Usage: \(extraUsage ? "ON" : "OFF")")
                 submenu.addItem(item)
             }
 
+            // === Subscription (includes separator internally) ===
             addSubscriptionItems(to: submenu, provider: .claude)
 
         case .codex:
