@@ -668,21 +668,10 @@ final class StatusBarController: NSObject {
               hasQuota = true
               let limit = copilotUsage.userPremiumRequestEntitlement
               let used = copilotUsage.usedRequests
-              let remaining = limit - used
-              let percentage = limit > 0 ? (Double(remaining) / Double(limit)) * 100 : 0
+              let usedPercent = limit > 0 ? (Double(used) / Double(limit)) * 100 : 0
 
-              var titleParts = [ProviderIdentifier.copilot.displayName]
-              titleParts.append(String(format: "%.0f%% remaining", percentage))
-
-              let quotaItem = NSMenuItem(
-                  title: titleParts.joined(separator: " "),
-                  action: nil,
-                  keyEquivalent: ""
-              )
-              quotaItem.image = iconForProvider(.copilot)
-              if percentage < 20 {
-                  quotaItem.image = tintedImage(iconForProvider(.copilot), color: .systemRed)
-              }
+              let quotaItem = NSMenuItem()
+              quotaItem.view = createQuotaTitleView(name: ProviderIdentifier.copilot.displayName, usedPercent: usedPercent, icon: iconForProvider(.copilot))
               quotaItem.tag = 999
 
               let submenu = NSMenu()
@@ -763,8 +752,9 @@ final class StatusBarController: NSObject {
                 if let result = providerResults[identifier] {
                     if case .quotaBased(let remaining, let entitlement, _) = result.usage {
                         hasQuota = true
-                        let percentage = entitlement > 0 ? (Double(remaining) / Double(entitlement)) * 100 : 0
-                        let item = createQuotaMenuItem(identifier: identifier, percentage: percentage)
+                        let usedPercent = entitlement > 0 ? (Double(entitlement - remaining) / Double(entitlement)) * 100 : 0
+                        let item = NSMenuItem()
+                        item.view = createQuotaTitleView(name: identifier.displayName, usedPercent: usedPercent, icon: iconForProvider(identifier))
                         item.tag = 999
 
                         if let details = result.details, details.hasAnyValue {
@@ -799,15 +789,12 @@ final class StatusBarController: NSObject {
                     for account in geminiAccounts {
                         hasQuota = true
                         let accountNumber = account.accountIndex + 1
-                        let title = geminiAccounts.count > 1
-                            ? String(format: "Gemini CLI #%d (%.0f%% remaining)", accountNumber, account.remainingPercentage)
-                            : String(format: "Gemini CLI (%.0f%% remaining)", account.remainingPercentage)
-
-                        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-                        item.image = iconForProvider(.geminiCLI)
-                        if account.remainingPercentage < 20 {
-                            item.image = tintedImage(iconForProvider(.geminiCLI), color: .systemRed)
-                        }
+                        let usedPercent = 100 - account.remainingPercentage
+                        let displayName = geminiAccounts.count > 1
+                            ? "Gemini CLI #\(accountNumber)"
+                            : "Gemini CLI"
+                        let item = NSMenuItem()
+                        item.view = createQuotaTitleView(name: displayName, usedPercent: usedPercent, icon: iconForProvider(.geminiCLI))
                         item.tag = 999
 
                         item.submenu = createGeminiAccountSubmenu(account)
@@ -895,18 +882,6 @@ final class StatusBarController: NSObject {
         let title = String(format: "%@    %.1f%%", identifier.displayName, utilization)
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.image = iconForProvider(identifier)
-        return item
-    }
-
-    private func createQuotaMenuItem(identifier: ProviderIdentifier, percentage: Double) -> NSMenuItem {
-        let title = String(format: "%@ (%.0f%% remaining)", identifier.displayName, percentage)
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        item.image = iconForProvider(identifier)
-
-        if percentage < 20 {
-            item.image = tintedImage(iconForProvider(identifier), color: .systemRed)
-        }
-
         return item
     }
 
