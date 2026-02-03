@@ -3,6 +3,13 @@ import os.log
 
 private let logger = Logger(subsystem: "com.opencodeproviders", category: "SyntheticProvider")
 
+protocol SyntheticTokenProviding: AnyObject {
+    var lastFoundAuthPath: URL? { get }
+    func getSyntheticAPIKey() -> String?
+}
+
+extension TokenManager: SyntheticTokenProviding {}
+
 struct SyntheticQuotasResponse: Codable {
     struct Subscription: Codable {
         let limit: Int
@@ -22,10 +29,10 @@ final class SyntheticProvider: ProviderProtocol {
     let identifier: ProviderIdentifier = .synthetic
     let type: ProviderType = .quotaBased
 
-    private let tokenManager: TokenManager
+    private let tokenManager: SyntheticTokenProviding
     private let session: URLSession
 
-    init(tokenManager: TokenManager = .shared, session: URLSession = .shared) {
+    init(tokenManager: SyntheticTokenProviding = TokenManager.shared, session: URLSession = .shared) {
         self.tokenManager = tokenManager
         self.session = session
     }
