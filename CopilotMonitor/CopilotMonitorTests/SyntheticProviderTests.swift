@@ -9,7 +9,7 @@ final class SyntheticProviderTests: XCTestCase {
             return true
         }
 
-        override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        override static func canonicalRequest(for request: URLRequest) -> URLRequest {
             return request
         }
 
