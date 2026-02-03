@@ -819,36 +819,27 @@ final class StatusBarController: NSObject {
         return item
     }
 
-    /// Creates a native NSMenuItem for quota providers with right-aligned used% using NSAttributedString.
-    /// Uses tab stops for right-alignment, preserving native hover highlight and submenu arrow (▸).
-    /// Red color on percentage text when usedPercent > 80% to warn about approaching limits.
+    /// Creates a native NSMenuItem for quota providers with colored usage percentage in parentheses.
+    /// Red color on name and percentage when usedPercent > 80% to warn about approaching limits.
     private func createNativeQuotaMenuItem(name: String, usedPercent: Double, icon: NSImage?) -> NSMenuItem {
-        let percentText = String(format: "%.0f%%", usedPercent)
-
-        // Right tab stop positioned to leave room for submenu arrow indicator
-        let tabPosition = MenuDesignToken.Dimension.menuWidth - MenuDesignToken.Spacing.trailingMargin - 30
-        let tabStop = NSTextTab(textAlignment: .right, location: tabPosition)
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.tabStops = [tabStop]
-
+        let percentText = String(format: "(%.0f%%)", usedPercent)
+        let percentColor: NSColor = usedPercent > 80 ? .systemRed : .secondaryLabelColor
+        
         let attributed = NSMutableAttributedString()
         // Provider name in default font
         attributed.append(NSAttributedString(
-            string: name,
+            string: "\(name) ",
             attributes: [.font: MenuDesignToken.Typography.defaultFont]
         ))
-        // Tab character + percentage in monospaced font, red when usage is critically high
-        let percentColor: NSColor = usedPercent > 80 ? .systemRed : .secondaryLabelColor
+        // Percentage in parentheses, colored when usage is critically high
         attributed.append(NSAttributedString(
-            string: "\t\(percentText)",
+            string: percentText,
             attributes: [
-                .font: MenuDesignToken.Typography.monospacedFont,
+                .font: MenuDesignToken.Typography.defaultFont,
                 .foregroundColor: percentColor
             ]
         ))
-        // Apply paragraph style for tab stops to entire string
-        attributed.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attributed.length))
-
+        
         let item = NSMenuItem()
         item.attributedTitle = attributed
         item.image = icon
