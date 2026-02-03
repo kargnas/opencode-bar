@@ -43,7 +43,9 @@
 
 ### Custom Providers
 
-- **Antigravity**: `NoeFabris/opencode-antigravity-auth`
+- **Antigravity/Gemini**
+  - `NoeFabris/opencode-antigravity-auth`
+  - `jenslys/opencode-gemini-auth`
 - **Claude**: `anomalyco/opencode-anthropic-auth`
 
 ## Features
