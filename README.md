@@ -39,6 +39,7 @@
 | **Kimi for Coding (Kimi K2.5)** | Quota-based | Usage limits, membership level, reset time |
 | **Z.AI Coding Plan** | Quota-based | Token/MCP quotas, model usage, tool usage (24h) |
 | **Antigravity** | Quota-based | Local language server monitoring |
+| **Chutes** | Quota-based | Daily usage limits, plan tier, credits balance |
 | **GitHub Copilot** | Quota-based | Daily history, overage tracking |
 
 ## Features
