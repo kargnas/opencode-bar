@@ -38,6 +38,7 @@
 | **Gemini CLI** | Quota-based | Per-model quotas, multi-account support |
 | **Kimi for Coding (Kimi K2.5)** | Quota-based | Usage limits, membership level, reset time |
 | **Z.AI Coding Plan** | Quota-based | Token/MCP quotas, model usage, tool usage (24h) |
+| **Synthetic** | Quota-based | 5h usage limit, request limits, reset time |
 | **Antigravity** | Quota-based | Local language server monitoring |
 | **GitHub Copilot** | Quota-based | Daily history, overage tracking |
 
