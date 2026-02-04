@@ -8,11 +8,6 @@ struct SyntheticQuotasResponse: Codable {
         let limit: Int
         let requests: Double  // API returns decimal values (e.g., 35.6)
         let renewsAt: String?
-
-        enum CodingKeys: String, CodingKey {
-            case limit, requests
-            case renewsAt = "renewsAt"
-        }
     }
 
     let subscription: Subscription
