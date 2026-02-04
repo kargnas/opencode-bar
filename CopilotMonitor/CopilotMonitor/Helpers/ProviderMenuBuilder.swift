@@ -462,17 +462,13 @@ extension StatusBarController {
 
         case .synthetic:
             if let fiveHour = details.fiveHourUsage {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: String(format: "5h Used: %.0f%%", fiveHour))
-                submenu.addItem(item)
-                if let reset = details.fiveHourReset {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-                    formatter.timeZone = TimeZone.current
-                    let resetItem = NSMenuItem()
-                    resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: reset))", indent: 18)
-                    submenu.addItem(resetItem)
-                }
+                let rows = createUsageWindowRow(
+                    label: "5h",
+                    usagePercent: fiveHour,
+                    resetDate: details.fiveHourReset,
+                    windowHours: 5
+                )
+                rows.forEach { submenu.addItem($0) }
             }
             if let limit = details.limit, let remaining = details.limitRemaining {
                 let item = NSMenuItem()
@@ -482,7 +478,9 @@ extension StatusBarController {
                 )
                 submenu.addItem(item)
             }
-            return submenu
+            submenu.addItem(NSMenuItem.separator())
+            addSubscriptionItems(to: submenu, provider: .synthetic)
+            debugLog("createDetailSubmenu: added subscription items for Synthetic")
 
         default:
             break
