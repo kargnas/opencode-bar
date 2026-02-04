@@ -638,12 +638,14 @@ extension StatusBarController {
     }
 
     enum PaceStatus {
+        case usedUp
         case onTrack
         case slightlyFast
         case tooFast
 
         var color: NSColor {
             switch self {
+            case .usedUp: return .systemRed
             case .onTrack: return .systemGreen
             case .slightlyFast: return .systemOrange
             case .tooFast: return .systemRed
@@ -655,8 +657,13 @@ extension StatusBarController {
         let elapsedRatio: Double
         let usageRatio: Double
         let predictedFinalUsage: Double
+        let remainingSeconds: TimeInterval
+        let isExhausted: Bool
 
         var status: PaceStatus {
+            if isExhausted {
+                return .usedUp
+            }
             if usageRatio <= elapsedRatio {
                 return .onTrack
             } else if predictedFinalUsage <= 130 {
@@ -676,11 +683,32 @@ extension StatusBarController {
 
         var statusText: String {
             switch status {
+            case .usedUp: return "Used Up"
             case .onTrack: return "On Track"
             case .slightlyFast: return "Slightly Fast"
             case .tooFast: return "Too Fast"
             }
         }
+    }
+
+    private func formatRemainingTime(seconds: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(seconds))
+        let totalMinutes = totalSeconds / 60
+        let totalHours = totalMinutes / 60
+        let days = totalHours / 24
+        let hours = totalHours % 24
+        let minutes = totalMinutes % 60
+
+        if days > 0 {
+            return "\(days)d \(hours)h left"
+        }
+        if totalHours > 0 {
+            return "\(totalHours)h left"
+        }
+        if totalMinutes == 0 {
+            return "less than 1m left"
+        }
+        return "\(minutes)m left"
     }
 
     func calculatePace(usage: Double, resetTime: Date, windowHours: Int) -> PaceInfo {
@@ -691,6 +719,7 @@ extension StatusBarController {
 
         let elapsedRatio = max(0, min(1, elapsedSeconds / windowSeconds))
         let usageRatio = usage / 100.0
+        let isExhausted = usage >= 100 && remainingSeconds > 0
 
         let predictedFinalUsage: Double
         if elapsedRatio > 0.01 {
@@ -702,7 +731,9 @@ extension StatusBarController {
         return PaceInfo(
             elapsedRatio: elapsedRatio,
             usageRatio: usageRatio,
-            predictedFinalUsage: predictedFinalUsage
+            predictedFinalUsage: predictedFinalUsage,
+            remainingSeconds: remainingSeconds,
+            isExhausted: isExhausted
         )
     }
 
@@ -713,15 +744,30 @@ extension StatusBarController {
             calendar.timeZone = utc
         }
 
+        let remainingSeconds = resetDate.timeIntervalSince(now)
+        let isExhausted = usagePercent >= 100 && remainingSeconds > 0
+
         guard let billingStart = calendar.date(byAdding: DateComponents(month: -1), to: resetDate) else {
-            return PaceInfo(elapsedRatio: 0, usageRatio: usagePercent / 100.0, predictedFinalUsage: usagePercent)
+            return PaceInfo(
+                elapsedRatio: 0,
+                usageRatio: usagePercent / 100.0,
+                predictedFinalUsage: usagePercent,
+                remainingSeconds: remainingSeconds,
+                isExhausted: isExhausted
+            )
         }
 
         let totalSeconds = resetDate.timeIntervalSince(billingStart)
         let elapsedSeconds = now.timeIntervalSince(billingStart)
 
         guard totalSeconds > 0 else {
-            return PaceInfo(elapsedRatio: 0, usageRatio: usagePercent / 100.0, predictedFinalUsage: usagePercent)
+            return PaceInfo(
+                elapsedRatio: 0,
+                usageRatio: usagePercent / 100.0,
+                predictedFinalUsage: usagePercent,
+                remainingSeconds: remainingSeconds,
+                isExhausted: isExhausted
+            )
         }
 
         let elapsedRatio = max(0, min(1, elapsedSeconds / totalSeconds))
@@ -737,7 +783,9 @@ extension StatusBarController {
         return PaceInfo(
             elapsedRatio: elapsedRatio,
             usageRatio: usageRatio,
-            predictedFinalUsage: predictedFinalUsage
+            predictedFinalUsage: predictedFinalUsage,
+            remainingSeconds: remainingSeconds,
+            isExhausted: isExhausted
         )
     }
 
@@ -755,6 +803,14 @@ extension StatusBarController {
         let leftTextField = NSTextField(labelWithString: "Pace: \(paceInfo.statusText)")
         leftTextField.font = NSFont.systemFont(ofSize: fontSize)
         leftTextField.textColor = .secondaryLabelColor
+        leftTextField.lineBreakMode = .byTruncatingTail
+        leftTextField.maximumNumberOfLines = 1
+        leftTextField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        if paceInfo.isExhausted {
+            leftTextField.stringValue = ""
+            leftTextField.isHidden = true
+            debugLog("createPaceView: hiding pace label for exhausted usage")
+        }
         leftTextField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(leftTextField)
         NSLayoutConstraint.activate([
@@ -780,26 +836,56 @@ extension StatusBarController {
             dotImageView.contentTintColor = paceInfo.status.color
         }
         view.addSubview(dotImageView)
-        rightEdge -= (statusDotSize + 6)
+        let dotSpacing = MenuDesignToken.Spacing.trailingMargin - MenuDesignToken.Dimension.statusDotSize
+        rightEdge -= (statusDotSize + dotSpacing)
 
         let rightTextField = NSTextField(labelWithString: "")
         let rightAttributedString = NSMutableAttributedString()
-        rightAttributedString.append(NSAttributedString(
-            string: "Predict: ",
-            attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
-        ))
-        rightAttributedString.append(NSAttributedString(
-            string: paceInfo.predictText,
-            attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
-        ))
+        if paceInfo.isExhausted {
+            let waitText = formatRemainingTime(seconds: paceInfo.remainingSeconds)
+            debugLog("createPaceView: usage exhausted, showing wait message \(waitText)")
+            rightAttributedString.append(NSAttributedString(
+                string: "Status: ",
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
+            ))
+            rightAttributedString.append(NSAttributedString(
+                string: "Used Up",
+                attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
+            ))
+            rightAttributedString.append(NSAttributedString(
+                string: " · Wait ",
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
+            ))
+            rightAttributedString.append(NSAttributedString(
+                string: waitText,
+                attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
+            ))
+        } else {
+            rightAttributedString.append(NSAttributedString(
+                string: "Predict: ",
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
+            ))
+            rightAttributedString.append(NSAttributedString(
+                string: paceInfo.predictText,
+                attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
+            ))
+        }
         rightTextField.attributedStringValue = rightAttributedString
         rightTextField.isBezeled = false
         rightTextField.isEditable = false
         rightTextField.isSelectable = false
         rightTextField.drawsBackground = false
-        rightTextField.sizeToFit()
-        rightTextField.frame = NSRect(x: rightEdge - rightTextField.frame.width, y: 3, width: rightTextField.frame.width, height: itemHeight - 6)
+        rightTextField.lineBreakMode = .byTruncatingTail
+        rightTextField.maximumNumberOfLines = 1
+        rightTextField.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rightTextField.setContentHuggingPriority(.required, for: .horizontal)
+        rightTextField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(rightTextField)
+        NSLayoutConstraint.activate([
+            rightTextField.trailingAnchor.constraint(equalTo: view.leadingAnchor, constant: rightEdge),
+            rightTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            leftTextField.trailingAnchor.constraint(lessThanOrEqualTo: rightTextField.leadingAnchor, constant: -dotSpacing)
+        ])
 
         return view
     }

@@ -461,13 +461,25 @@ func buildProviderSubmenu() -> [NSMenuItem] {
         - Use menu item references to update in-place instead of full rebuild
       - Performance Impact: 30 days × full rebuild = ~30x slower than necessary
       - Pattern: `updateLoadingProgress(dayIndex)` → update single loading item → `updateMenu()` only on completion
-    - **Debug Log Frequency Control**:
+   - **Debug Log Frequency Control**:
        - Excessive Logging: `logMenuStructure()` called on every menu update produces massive log output
        - Symptom: Logs show repeated identical menu structures hundreds of times during progressive loading
        - Solution: Use debug guards or log level controls for verbose structure logging
        - Pattern: `#if DEBUG logMenuStructure()` or move to trace-level logging instead of debug
        - Recommendation: Disable structure logging after initial validation, enable only when debugging menu issues
-     - **Silent Error Handling for Non-Critical Operations**:
+   - **Pace Row Overlap Prevention**:
+       - Overlap Risk: Left and right labels can collide when the right-side status text grows long
+       - Solution: Use Auto Layout with compression resistance priorities and right-aligned constraints
+       - Pattern: Left label `.defaultLow`, right label `.required`, and `lessThanOrEqualTo` spacing
+   - **Used-Up Pace Label Suppression**:
+       - Clarity Issue: Showing "Pace: Used Up" alongside wait text is redundant and noisy
+       - Solution: Hide the pace label entirely when usage is exhausted
+       - Pattern: `leftTextField.isHidden = true` when `isExhausted` is true
+   - **Wait Time Formatting Rules**:
+       - Consistency Need: Different wait durations should display with predictable granularity
+       - Rule: Show `Xd Yh` for 1d+, `Xh` for 1h+, and `Xm` for under 1h
+       - Pattern: Centralize in a single formatter function for all used-up messages
+   - **Silent Error Handling for Non-Critical Operations**:
         - Empty Catch Blocks: Use `catch {}` for operations where failure doesn't impact core functionality
         - Appropriate Use Cases: Optional config file reading, CLI binary detection, environment discovery
         - Safety Consideration: Only use when operation is truly non-critical and has fallback behavior
