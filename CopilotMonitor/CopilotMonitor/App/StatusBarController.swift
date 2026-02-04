@@ -559,9 +559,23 @@ final class StatusBarController: NSObject {
             if visibleKeys.contains(key) {
                 continue
             }
-            if let provider = providerIdentifier(for: key),
-               loadingProviders.contains(provider) {
-                continue
+            // Skip if provider is currently loading, disabled, or not visible in results
+            // This prevents false positives when:
+            // 1. Provider is disabled in settings
+            // 2. Network error caused fetch to fail (provider not in providerResults)
+            // 3. Provider is still loading
+            if let provider = providerIdentifier(for: key) {
+                if loadingProviders.contains(provider) {
+                    continue
+                }
+                if !isProviderEnabled(provider) {
+                    continue
+                }
+                // If provider is enabled but not in results, it likely failed to fetch
+                // Don't mark as orphaned in this case
+                if !providerResults.keys.contains(provider) {
+                    continue
+                }
             }
 
             let plan = SubscriptionSettingsManager.shared.getPlan(forKey: key)
