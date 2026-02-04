@@ -302,30 +302,18 @@ final class CopilotProvider: ProviderProtocol {
     }
 
     private func buildCandidateFromToken(_ info: CopilotTokenInfo) -> CopilotAccountCandidate? {
-        if info.planInfo == nil && info.login == nil && info.accountId == nil {
+        guard let limit = info.quotaLimit,
+              let remaining = info.quotaRemaining,
+              limit > 0 else {
             return nil
         }
-        let limit = info.quotaLimit
-        let remaining = info.quotaRemaining
-        let used: Int? = {
-            guard let limit = limit, let remaining = remaining else { return nil }
-            return max(0, limit - remaining)
-        }()
+        let used = max(0, limit - remaining)
 
-        let providerUsage: ProviderUsage
-        if let limit = limit, let remaining = remaining, limit > 0 {
-            providerUsage = ProviderUsage.quotaBased(
-                remaining: max(0, remaining),
-                entitlement: limit,
-                overagePermitted: true
-            )
-        } else {
-            providerUsage = ProviderUsage.quotaBased(
-                remaining: 0,
-                entitlement: 0,
-                overagePermitted: true
-            )
-        }
+        let providerUsage = ProviderUsage.quotaBased(
+            remaining: max(0, remaining),
+            entitlement: limit,
+            overagePermitted: true
+        )
 
         let details = DetailedUsage(
             planType: info.plan,
