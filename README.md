@@ -73,6 +73,7 @@ Download the latest `.dmg` file from the [**Releases**](https://github.com/opggi
 - **Menu Bar Dashboard**: View all provider usage at a glance
 - **Visual Indicators**: Color-coded progress (green → yellow → orange → red)
 - **Detailed Submenus**: Click any provider for in-depth metrics
+- **Auth Source Labels**: See where each account token was detected (OpenCode, VS Code, Keychain, etc.)
 
 ### Usage History & Predictions
 - **Daily Tracking**: View request counts and overage costs
@@ -82,6 +83,7 @@ Download the latest `.dmg` file from the [**Releases**](https://github.com/opggi
 ### Subscription Settings (Quota-based Providers Only)
 - **Per-Provider Plans**: Configure your subscription tier for quota-based providers
 - **Cost Tracking**: Accurate monthly cost calculation based on your plan
+- **Orphaned Plan Cleanup**: Detect and reset stale subscription entries that no longer match accounts
 
 ### Convenience
 - **Launch at Login**: Start automatically with macOS
