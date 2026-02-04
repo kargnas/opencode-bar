@@ -831,7 +831,7 @@ final class StatusBarController: NSObject {
                 insertIndex += 1
             }
 
-            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zaiCodingPlan, .antigravity]
+            let quotaOrder: [ProviderIdentifier] = [.claude, .kimi, .codex, .zaiCodingPlan, .antigravity, .chutes]
             for identifier in quotaOrder {
                 guard isProviderEnabled(identifier) else { continue }
 
