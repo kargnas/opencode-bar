@@ -1174,7 +1174,7 @@ final class StatusBarController: NSObject {
         case .zaiCodingPlan:
             image = NSImage(named: "ZaiIcon")
         case .chutes:
-            image = NSImage(systemSymbolName: "c.circle", accessibilityDescription: identifier.displayName)
+            image = NSImage(named: "ChutesIcon")
         }
 
          // Resize icons to 16x16 for consistent menu appearance
