@@ -47,7 +47,8 @@ actor CLIProviderManager {
             syntheticProvider
         ]
 
-        logger.info("CLIProviderManager initialized with \(self.providers.count) providers")
+        let providerCount = providers.count
+        logger.info("CLIProviderManager initialized with \(providerCount) providers")
     }
     
     // MARK: - Public API
@@ -56,7 +57,8 @@ actor CLIProviderManager {
     /// - Returns: Dictionary mapping provider identifiers to their results
     /// - Note: Returns partial results if some providers fail (graceful degradation)
     func fetchAll() async -> [ProviderIdentifier: ProviderResult] {
-        logger.info("🔵 [CLIProviderManager] fetchAll() started - \(self.providers.count) providers")
+        let providerCount = providers.count
+        logger.info("🔵 [CLIProviderManager] fetchAll() started - \(providerCount) providers")
         
         var results: [ProviderIdentifier: ProviderResult] = [:]
         
@@ -100,7 +102,7 @@ actor CLIProviderManager {
             }
         }
         
-        logger.info("🟢 [CLIProviderManager] fetchAll() completed: \(results.count)/\(self.providers.count) providers succeeded")
+        logger.info("🟢 [CLIProviderManager] fetchAll() completed: \(results.count)/\(providerCount) providers succeeded")
         return results
     }
     

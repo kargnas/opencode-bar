@@ -600,31 +600,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		CLIAAAAAAAAAAAAAAAAAAAAA /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				CLI1111111111111111111111 /* main.swift in Sources */,
-				CB3FA9AE43F3466269FA56F4 /* ProviderProtocol.swift in Sources */,
-				B248782F500D3B09E0CE5AC8 /* ProviderUsage.swift in Sources */,
-				PR1111111111111111111111 /* ProviderResult.swift in Sources */,
-				E33333333333333333333334 /* UsageHistory.swift in Sources */,
-				0EA5E7A5BCD47582D6C2175B /* TokenManager.swift in Sources */,
-				68CE796F262067298FE88469 /* BrowserCookieService.swift in Sources */,
-				CLICLAUDE11111111111111 /* ClaudeProvider.swift in Sources */,
-				CLICODEX111111111111111 /* CodexProvider.swift in Sources */,
-				F35960B456C28D71BE7575A5 /* GeminiCLIProvider.swift in Sources */,
-				283349012F313176004DADE1 /* ChutesProvider.swift in Sources */,
-				CLIOPENROUTER111111111 /* OpenRouterProvider.swift in Sources */,
-				CLIANTIGRAVITY11111111 /* AntigravityProvider.swift in Sources */,
-				CLIOPENCZEN1111111111111 /* OpenCodeZenProvider.swift in Sources */,
-				CLIKIMI1111111111111111 /* KimiProvider.swift in Sources */,
-				CLIPROVMGR11111111111111 /* CLIProviderManager.swift in Sources */,
-				CLICOPILOT11111111111111 /* CopilotCLIProvider.swift in Sources */,
-				CLIHISTORY11111111111111 /* CopilotHistoryService.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		TIIIIIIIIIIIIIIIIIIIIII /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
