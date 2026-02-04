@@ -376,14 +376,29 @@ final class CopilotProvider: ProviderProtocol {
             )
         }
 
-        let usageCandidates = accountResults.filter { ($0.usage.totalEntitlement ?? 0) > 0 }
-        let minRemaining = usageCandidates.compactMap { $0.usage.remainingQuota }.min() ?? 0
-        let entitlement = usageCandidates.first?.usage.totalEntitlement ?? 0
-        let aggregateUsage = ProviderUsage.quotaBased(
-            remaining: minRemaining,
-            entitlement: entitlement,
-            overagePermitted: true
-        )
+        let usageCandidates = accountResults.compactMap { result -> (remaining: Int, entitlement: Int)? in
+            guard let remaining = result.usage.remainingQuota,
+                  let entitlement = result.usage.totalEntitlement,
+                  entitlement > 0 else {
+                return nil
+            }
+            return (remaining: remaining, entitlement: entitlement)
+        }
+
+        let aggregateUsage: ProviderUsage
+        if let minCandidate = usageCandidates.min(by: { $0.remaining < $1.remaining }) {
+            aggregateUsage = ProviderUsage.quotaBased(
+                remaining: max(0, minCandidate.remaining),
+                entitlement: max(0, minCandidate.entitlement),
+                overagePermitted: true
+            )
+        } else {
+            aggregateUsage = ProviderUsage.quotaBased(
+                remaining: 0,
+                entitlement: 0,
+                overagePermitted: true
+            )
+        }
 
         let primaryDetails = cookieCandidate?.details ?? accountResults.first?.details
 
