@@ -213,6 +213,17 @@ final class SubscriptionSettingsManager {
         setPlan(plan, forKey: key)
     }
 
+    func removePlan(forKey key: String) {
+        let fullKey = "\(userDefaultsKeyPrefix)\(key)"
+        UserDefaults.standard.removeObject(forKey: fullKey)
+    }
+
+    func removePlans(forKeys keys: [String]) {
+        for key in keys {
+            removePlan(forKey: key)
+        }
+    }
+
     func getAllSubscriptionKeys() -> [String] {
         let allKeys = UserDefaults.standard.dictionaryRepresentation().keys
         return allKeys.filter { $0.hasPrefix(userDefaultsKeyPrefix) }

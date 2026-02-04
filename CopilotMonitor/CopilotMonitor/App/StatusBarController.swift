@@ -64,6 +64,8 @@ final class StatusBarController: NSObject {
      private var enabledProvidersMenu: NSMenu!
      private var lastProviderErrors: [ProviderIdentifier: String] = [:]
      private var viewErrorDetailsItem: NSMenuItem!
+     private var orphanedSubscriptionKeys: [String] = []
+     private var orphanedSubscriptionTotal: Double = 0
 
     private var usagePredictor: UsagePredictor {
         UsagePredictor(weights: predictionPeriod.weights)
@@ -483,6 +485,105 @@ final class StatusBarController: NSObject {
         return payAsYouGo + subscriptions
     }
 
+    private func sanitizedSubscriptionKey(_ key: String) -> String {
+        let parts = key.split(separator: ".", maxSplits: 1)
+        if parts.count > 1 {
+            return "\(parts[0]).<redacted>"
+        }
+        return String(parts[0])
+    }
+
+    private func orphanedIcon() -> NSImage? {
+        let symbol = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Orphaned")
+        let sizeConfig = NSImage.SymbolConfiguration(pointSize: MenuDesignToken.Dimension.iconSize, weight: .regular)
+        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: NSColor.systemOrange)
+        let config = sizeConfig.applying(colorConfig)
+        let image = symbol?.withSymbolConfiguration(config)
+        image?.isTemplate = false
+        return image
+    }
+
+    private func italicMenuTitle(_ text: String) -> NSAttributedString {
+        let baseFont = MenuDesignToken.Typography.defaultFont
+        let italicFont = NSFontManager.shared.convert(baseFont, toHaveTrait: .italicFontMask)
+        return NSAttributedString(string: text, attributes: [.font: italicFont])
+    }
+
+    private func providerIdentifier(for subscriptionKey: String) -> ProviderIdentifier? {
+        let prefix = subscriptionKey.split(separator: ".", maxSplits: 1).first
+        guard let prefix else { return nil }
+        return ProviderIdentifier(rawValue: String(prefix))
+    }
+
+    private func collectVisibleSubscriptionKeys(providerResults: [ProviderIdentifier: ProviderResult]) -> Set<String> {
+        var keys = Set<String>()
+
+        for (identifier, result) in providerResults {
+            guard isProviderEnabled(identifier) else { continue }
+
+            if identifier == .geminiCLI,
+               let details = result.details,
+               let geminiAccounts = details.geminiAccounts,
+               !geminiAccounts.isEmpty {
+                for account in geminiAccounts {
+                    let key = SubscriptionSettingsManager.shared.subscriptionKey(for: .geminiCLI, accountId: account.email)
+                    keys.insert(key)
+                }
+                continue
+            }
+
+            if let accounts = result.accounts, !accounts.isEmpty {
+                for account in accounts {
+                    if let accountId = account.accountId, !accountId.isEmpty {
+                        keys.insert(SubscriptionSettingsManager.shared.subscriptionKey(for: identifier, accountId: accountId))
+                    } else {
+                        keys.insert(SubscriptionSettingsManager.shared.subscriptionKey(for: identifier))
+                    }
+                }
+            } else {
+                keys.insert(SubscriptionSettingsManager.shared.subscriptionKey(for: identifier))
+            }
+        }
+
+        return keys
+    }
+
+    private func calculateOrphanedSubscriptions(providerResults: [ProviderIdentifier: ProviderResult]) -> (keys: [String], total: Double) {
+        let visibleKeys = collectVisibleSubscriptionKeys(providerResults: providerResults)
+        let allKeys = SubscriptionSettingsManager.shared.getAllSubscriptionKeys()
+
+        var orphaned: [String] = []
+        var total = 0.0
+
+        for key in allKeys {
+            if visibleKeys.contains(key) {
+                continue
+            }
+            if let provider = providerIdentifier(for: key),
+               loadingProviders.contains(provider) {
+                continue
+            }
+
+            let plan = SubscriptionSettingsManager.shared.getPlan(forKey: key)
+            if plan.cost <= 0 {
+                continue
+            }
+
+            orphaned.append(key)
+            total += plan.cost
+        }
+
+        if orphaned.isEmpty {
+            debugLog("Orphaned subscriptions: none")
+        } else {
+            let formattedTotal = String(format: "%.2f", total)
+            let sanitizedKeys = orphaned.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
+            debugLog("Orphaned subscriptions detected: \(orphaned.count) key(s), total=$\(formattedTotal), keys=[\(sanitizedKeys)]")
+        }
+
+        return (orphaned, total)
+    }
+
       private func updateMultiProviderMenu() {
           debugLog("updateMultiProviderMenu: started")
           guard let separatorIndex = menu.items.firstIndex(where: { $0.isSeparatorItem }) else {
@@ -828,6 +929,24 @@ final class StatusBarController: NSObject {
             noItem.view = createDisabledLabelView(text: "No providers")
             noItem.tag = 999
             menu.insertItem(noItem, at: insertIndex)
+            insertIndex += 1
+        }
+
+        let orphaned = calculateOrphanedSubscriptions(providerResults: providerResults)
+        orphanedSubscriptionKeys = orphaned.keys
+        orphanedSubscriptionTotal = orphaned.total
+        if orphaned.total > 0 {
+            let title = String(format: "Orphaned ($%.2f)", orphaned.total)
+            let orphanedItem = NSMenuItem(
+                title: title,
+                action: #selector(confirmResetOrphanedSubscriptions(_:)),
+                keyEquivalent: ""
+            )
+            orphanedItem.target = self
+            orphanedItem.attributedTitle = italicMenuTitle(title)
+            orphanedItem.image = orphanedIcon()
+            orphanedItem.tag = 999
+            menu.insertItem(orphanedItem, at: insertIndex)
             insertIndex += 1
         }
 
@@ -1266,6 +1385,50 @@ final class StatusBarController: NSObject {
         logger.info("⌨️ [Keyboard] ⌘E View Error Details triggered")
         debugLog("⌨️ viewErrorDetailsClicked: ⌘E shortcut activated")
         showErrorDetailsAlert()
+    }
+
+    @objc private func confirmResetOrphanedSubscriptions(_ sender: NSMenuItem) {
+        guard !orphanedSubscriptionKeys.isEmpty else {
+            debugLog("confirmResetOrphanedSubscriptions: no orphaned subscriptions to reset")
+            return
+        }
+
+        let orphanedCount = orphanedSubscriptionKeys.count
+        let formattedTotal = String(format: "%.2f", orphanedSubscriptionTotal)
+        let sanitizedKeys = orphanedSubscriptionKeys.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
+        debugLog("confirmResetOrphanedSubscriptions: \(orphanedCount) key(s) pending, total=$\(formattedTotal), keys=[\(sanitizedKeys)]")
+
+        let entryLabel = orphanedCount == 1 ? "entry" : "entries"
+        let detailText = "This will delete \(orphanedCount) stored subscription \(entryLabel) that no longer match any detected account or provider. This can happen after refactors, account removal, or auth changes. Total to clear: $\(formattedTotal)."
+
+        NSApp.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "Reset orphaned subscriptions?"
+        alert.informativeText = detailText
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            resetOrphanedSubscriptions()
+        } else {
+            debugLog("confirmResetOrphanedSubscriptions: reset cancelled")
+        }
+    }
+
+    private func resetOrphanedSubscriptions() {
+        let orphanedCount = orphanedSubscriptionKeys.count
+        let formattedTotal = String(format: "%.2f", orphanedSubscriptionTotal)
+        let sanitizedKeys = orphanedSubscriptionKeys.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
+        debugLog("resetOrphanedSubscriptions: resetting \(orphanedCount) key(s), total=$\(formattedTotal), keys=[\(sanitizedKeys)]")
+        logger.info("Resetting orphaned subscription entries: count=\(orphanedCount), total=$\(formattedTotal)")
+
+        SubscriptionSettingsManager.shared.removePlans(forKeys: orphanedSubscriptionKeys)
+        orphanedSubscriptionKeys = []
+        orphanedSubscriptionTotal = 0
+        updateMultiProviderMenu()
     }
     
     private func showErrorDetailsAlert() {
