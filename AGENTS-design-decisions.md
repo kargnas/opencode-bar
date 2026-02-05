@@ -17,8 +17,8 @@ Pay-as-you-go: $37.61
 ─────────────────────────────
 Quota Status: $219/m
   Copilot (0%)               ▸
-  Claude (0%, 100%)          ▸
-  Kimi for Coding (0%, 51%)  ▸
+  Claude: 0%, 100%           ▸
+  Kimi for Coding: 0%, 51%   ▸
   Codex (100%)               ▸
   Gemini CLI #1 (100%)       ▸
 ─────────────────────────────
@@ -109,8 +109,8 @@ Quit (⌘Q)
   - Format: `Token From: <path>` in submenu
   - Examples: `~/.local/share/opencode/auth.json`, `VS Code`, `Keychain`
 - **Dual-Percentage Display**: Providers with multiple usage windows show both
-  - Claude/Kimi: `Claude (5h%, 7d%)` format showing 5-hour and 7-day windows
-  - Example: `Claude (0%, 100%)` where 0% is 5h usage, 100% is 7d usage
+  - Claude/Kimi: `Claude: 5h%, 7d%` format showing 5-hour and 7-day windows
+  - Example: `Claude: 0%, 100%` where 0% is 5h usage, 100% is 7d usage
   - Each percentage is individually colored based on thresholds  
 
 ### Multi-Account Provider Rules (from PR #55)
