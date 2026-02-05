@@ -54,6 +54,12 @@ final class SyntheticProvider: ProviderProtocol {
             throw ProviderError.networkError("HTTP \(httpResponse.statusCode)")
         }
 
+        // Handle empty response (user has no subscription)
+        if data.isEmpty {
+            logger.info("Synthetic API returned empty response - no active subscription")
+            throw ProviderError.authenticationFailed("No active Synthetic subscription")
+        }
+
         do {
             let decoder = JSONDecoder()
             let apiResponse = try decoder.decode(SyntheticQuotasResponse.self, from: data)
@@ -100,7 +106,7 @@ final class SyntheticProvider: ProviderProtocol {
 
         } catch let error as DecodingError {
             logger.error("Failed to decode Synthetic response: \(error.localizedDescription)")
-            throw ProviderError.decodingError("Invalid response format")
+            throw ProviderError.authenticationFailed("No active Synthetic subscription")
         } catch {
             throw ProviderError.providerError("Failed to parse response: \(error.localizedDescription)")
         }

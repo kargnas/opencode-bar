@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Favicon 48x48.png",
+      "filename" : "synthetic-icon.png",
       "idiom" : "universal",
       "scale" : "1x"
     }
@@ -9,5 +9,9 @@
   "info" : {
     "author" : "xcode",
     "version" : 1
+  },
+  "properties" : {
+    "preserves-vector-representation" : true,
+    "template-rendering-intent" : "template"
   }
 }

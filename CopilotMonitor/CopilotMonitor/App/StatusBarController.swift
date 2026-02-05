@@ -1234,7 +1234,8 @@ final class StatusBarController: NSObject {
 
     private func createErrorMenuItem(identifier: ProviderIdentifier, errorMessage: String) -> NSMenuItem {
         let isAuthError = isAuthenticationError(errorMessage)
-        let statusText = isAuthError ? "No Credentials" : "Error"
+        let isSubscriptionError = errorMessage.lowercased().contains("subscription")
+        let statusText = isSubscriptionError ? "No Subscription" : (isAuthError ? "No Credentials" : "Error")
         let title = "\(identifier.displayName) (\(statusText))"
 
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
