@@ -67,7 +67,7 @@ enum MenuBarDisplayMode: Int, CaseIterable {
         }
     }
 
-    static var defaultMode_: MenuBarDisplayMode { .defaultMode }
+    static var defaultDisplayMode: MenuBarDisplayMode { .defaultMode }
 
     /// UserDefaults key for the display mode
     static let userDefaultsKey = "menuBarDisplayMode"

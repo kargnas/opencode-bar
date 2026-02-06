@@ -22,7 +22,7 @@ final class MenuBarDisplayModeTests: XCTestCase {
     }
 
     func testDefaultMode() {
-        XCTAssertEqual(MenuBarDisplayMode.defaultMode_, .defaultMode)
+        XCTAssertEqual(MenuBarDisplayMode.defaultDisplayMode, .defaultMode)
     }
 
     func testInitFromRawValue() {
