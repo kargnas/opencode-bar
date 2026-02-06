@@ -1,6 +1,6 @@
 # AI Usage API Reference
 
-> OpenCode 사용자를 위한 AI 사용량 조회 API 레퍼런스
+> AI usage lookup API reference for OpenCode users
 
 ## Token Locations
 
@@ -36,8 +36,8 @@ curl -s "https://api.anthropic.com/api/oauth/usage" \
 
 | Field | Description |
 |-------|-------------|
-| `five_hour.utilization` | 5시간 윈도우 사용률 (%) |
-| `seven_day.utilization` | 7일 윈도우 사용률 (%) |
+| `five_hour.utilization` | 5-hour window utilization (%) |
+| `seven_day.utilization` | 7-day window utilization (%) |
 
 ---
 
@@ -74,8 +74,8 @@ curl -s "https://chatgpt.com/backend-api/wham/usage" \
 
 | Field | Description |
 |-------|-------------|
-| `primary_window.used_percent` | Primary rate limit 사용률 (%) |
-| `secondary_window.used_percent` | Secondary rate limit 사용률 (%) |
+| `primary_window.used_percent` | Primary rate limit utilization (%) |
+| `secondary_window.used_percent` | Secondary rate limit utilization (%) |
 
 ---
 
@@ -112,19 +112,19 @@ curl -s "https://api.github.com/copilot_internal/user" \
 
 | Field | Description |
 |-------|-------------|
-| `premium_interactions.entitlement` | 월간 프리미엄 요청 한도 |
-| `premium_interactions.remaining` | 남은 요청 수 (음수 = 초과) |
+| `premium_interactions.entitlement` | Monthly premium requests entitlement |
+| `premium_interactions.remaining` | Remaining requests (negative = overage) |
 
 ---
 
 ## 4. Antigravity (Dual Quota System)
 
-Antigravity는 **2개의 독립적인 쿼터 시스템**이 있습니다:
+Antigravity has **two independent quota systems**:
 
 | System | API | Models | Reset |
 |--------|-----|--------|-------|
-| **Gemini CLI** | `cloudcode-pa.googleapis.com` | gemini-2.0/2.5-flash/pro | ~17시간 |
-| **Antigravity Local** | Language Server (localhost) | Claude 4.5, Gemini 3, GPT-OSS | ~7일 |
+| **Gemini CLI** | `cloudcode-pa.googleapis.com` | gemini-2.0/2.5-flash/pro | ~17 hours |
+| **Antigravity Local** | Language Server (localhost) | Claude 4.5, Gemini 3, GPT-OSS | ~7 days |
 
 ### 4a. Gemini CLI Quota
 
@@ -290,7 +290,7 @@ Client Secret: Set GEMINI_CLIENT_SECRET environment variable
 
 ## Scripts
 
-테스트 스크립트는 `scripts/` 폴더에 있습니다:
+Test scripts are in the `scripts/` folder:
 
 | Script | Provider |
 |--------|----------|

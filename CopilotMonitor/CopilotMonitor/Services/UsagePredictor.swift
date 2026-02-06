@@ -48,9 +48,9 @@ class UsagePredictor {
         self.weights = weights
     }
 
-    /// 월말 사용량 및 비용 예측
+    /// Predict end-of-month usage and cost
     /// - Parameters:
-    ///   - history: 일별 사용량 히스토리
+    ///   - history: Daily usage history
     ///   - currentUsage: Current usage info (includes limit)
     /// - Returns: Prediction result
     func predict(history: UsageHistory, currentUsage: CopilotUsage) -> UsagePrediction {
@@ -101,7 +101,7 @@ class UsagePredictor {
             predictedBilledAmount = 0
         }
 
-        // Step 6: Confidence Level 결정
+        // Step 6: Determine confidence level
         let daysUsed = dailyData.count
         let confidenceLevel: ConfidenceLevel
 

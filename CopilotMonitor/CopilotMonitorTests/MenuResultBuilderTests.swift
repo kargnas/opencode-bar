@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import CopilotMonitor
+@testable import OpenCode_Bar
 
 final class MenuResultBuilderTests: XCTestCase {
     

@@ -1,5 +1,5 @@
 import XCTest
-@testable import CopilotMonitor
+@testable import OpenCode_Bar
 
 final class SyntheticProviderTests: XCTestCase {
     private final class MockURLProtocol: URLProtocol {
@@ -93,15 +93,18 @@ final class SyntheticProviderTests: XCTestCase {
 
         XCTAssertEqual(result.details?.limit, 200)
         XCTAssertEqual(result.details?.limitRemaining, 149)
-        XCTAssertEqual(result.details?.fiveHourUsage, 25.25, accuracy: 0.01)
+        if let fiveHourUsage = result.details?.fiveHourUsage {
+            XCTAssertEqual(fiveHourUsage, 25.25, accuracy: 0.01)
+        } else {
+            XCTFail("Expected fiveHourUsage")
+        }
         XCTAssertNotNil(result.details?.fiveHourReset)
         XCTAssertEqual(result.details?.authSource, expectedAuthPath)
     }
 
-    func testFetchReturnsAuthenticationErrorOn401() async {
+    func testFetchReturnsAuthenticationErrorOn401() async throws {
         guard TokenManager.shared.getSyntheticAPIKey() != nil else {
-            XCTSkip("Synthetic API key not available; skipping fetch test.")
-            return
+            throw XCTSkip("Synthetic API key not available; skipping fetch test.")
         }
         let session = makeSession()
         let provider = SyntheticProvider(tokenManager: .shared, session: session)
@@ -126,10 +129,9 @@ final class SyntheticProviderTests: XCTestCase {
         }
     }
 
-    func testFetchReturnsNetworkErrorOnNon200() async {
+    func testFetchReturnsNetworkErrorOnNon200() async throws {
         guard TokenManager.shared.getSyntheticAPIKey() != nil else {
-            XCTSkip("Synthetic API key not available; skipping fetch test.")
-            return
+            throw XCTSkip("Synthetic API key not available; skipping fetch test.")
         }
         let session = makeSession()
         let provider = SyntheticProvider(tokenManager: .shared, session: session)
@@ -154,10 +156,9 @@ final class SyntheticProviderTests: XCTestCase {
         }
     }
 
-    func testFetchReturnsDecodingErrorOnMalformedJSON() async {
+    func testFetchReturnsAuthenticationErrorOnMalformedJSON() async throws {
         guard TokenManager.shared.getSyntheticAPIKey() != nil else {
-            XCTSkip("Synthetic API key not available; skipping fetch test.")
-            return
+            throw XCTSkip("Synthetic API key not available; skipping fetch test.")
         }
         let session = makeSession()
         let provider = SyntheticProvider(tokenManager: .shared, session: session)
@@ -169,11 +170,11 @@ final class SyntheticProviderTests: XCTestCase {
 
         do {
             _ = try await provider.fetch()
-            XCTFail("Expected decoding error")
+            XCTFail("Expected authentication failure")
         } catch let error as ProviderError {
             switch error {
-            case .decodingError:
-                break
+            case .authenticationFailed(let message):
+                XCTAssertTrue(message.contains("No active Synthetic subscription"))
             default:
                 XCTFail("Unexpected error: \(error)")
             }

@@ -559,7 +559,8 @@ final class StatusBarController: NSObject {
             if visibleKeys.contains(key) {
                 continue
             }
-            // Skip if provider is currently loading, disabled, or not visible in results
+
+            // Skip if provider is currently loading, disabled, or not visible in results.
             // This prevents false positives when:
             // 1. Provider is disabled in settings
             // 2. Network error caused fetch to fail (provider not in providerResults)
@@ -571,14 +572,21 @@ final class StatusBarController: NSObject {
                 if !isProviderEnabled(provider) {
                     continue
                 }
-                // If provider is enabled but not in results, it likely failed to fetch
-                // Don't mark as orphaned in this case
+                // If provider is enabled but not in results, it likely failed to fetch.
+                // Don't mark as orphaned in this case.
                 if !providerResults.keys.contains(provider) {
                     continue
                 }
             } else {
-                // Unknown provider prefix - skip to avoid false orphan detection
-                // This handles corrupted keys or keys for future/unsupported providers
+                // Unknown provider prefix: still treat it as orphaned if it contributes a cost.
+                // This lets users clean up stale subscription entries after provider renames/removals.
+                let plan = SubscriptionSettingsManager.shared.getPlan(forKey: key)
+                if plan.cost <= 0 {
+                    continue
+                }
+
+                orphaned.append(key)
+                total += plan.cost
                 continue
             }
 
@@ -1575,14 +1583,19 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func confirmResetOrphanedSubscriptions(_ sender: NSMenuItem) {
-        guard !orphanedSubscriptionKeys.isEmpty else {
+        // Capture current orphaned state to avoid races while the modal alert is open
+        // (auto-refresh can rebuild the menu and mutate orphanedSubscriptionKeys).
+        let keysToReset = orphanedSubscriptionKeys
+        let totalToReset = orphanedSubscriptionTotal
+
+        guard !keysToReset.isEmpty else {
             debugLog("confirmResetOrphanedSubscriptions: no orphaned subscriptions to reset")
             return
         }
 
-        let orphanedCount = orphanedSubscriptionKeys.count
-        let formattedTotal = String(format: "%.2f", orphanedSubscriptionTotal)
-        let sanitizedKeys = orphanedSubscriptionKeys.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
+        let orphanedCount = keysToReset.count
+        let formattedTotal = String(format: "%.2f", totalToReset)
+        let sanitizedKeys = keysToReset.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
         debugLog("confirmResetOrphanedSubscriptions: \(orphanedCount) key(s) pending, total=$\(formattedTotal), keys=[\(sanitizedKeys)]")
 
         let entryLabel = orphanedCount == 1 ? "entry" : "entries"
@@ -1599,20 +1612,34 @@ final class StatusBarController: NSObject {
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            resetOrphanedSubscriptions()
+            resetOrphanedSubscriptions(keys: keysToReset, expectedTotal: totalToReset)
         } else {
             debugLog("confirmResetOrphanedSubscriptions: reset cancelled")
         }
     }
 
-    private func resetOrphanedSubscriptions() {
-        let orphanedCount = orphanedSubscriptionKeys.count
-        let formattedTotal = String(format: "%.2f", orphanedSubscriptionTotal)
-        let sanitizedKeys = orphanedSubscriptionKeys.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
+    private func resetOrphanedSubscriptions(keys: [String], expectedTotal: Double) {
+        guard !keys.isEmpty else {
+            debugLog("resetOrphanedSubscriptions: no keys provided, skipping")
+            return
+        }
+
+        let orphanedCount = keys.count
+        let formattedTotal = String(format: "%.2f", expectedTotal)
+        let sanitizedKeys = keys.map { sanitizedSubscriptionKey($0) }.joined(separator: ", ")
         debugLog("resetOrphanedSubscriptions: resetting \(orphanedCount) key(s), total=$\(formattedTotal), keys=[\(sanitizedKeys)]")
         logger.info("Resetting orphaned subscription entries: count=\(orphanedCount), total=$\(formattedTotal)")
 
-        SubscriptionSettingsManager.shared.removePlans(forKeys: orphanedSubscriptionKeys)
+        SubscriptionSettingsManager.shared.removePlans(forKeys: keys)
+
+        let remainingKeys = Set(keys).intersection(SubscriptionSettingsManager.shared.getAllSubscriptionKeys())
+        if remainingKeys.isEmpty {
+            debugLog("resetOrphanedSubscriptions: removed all keys successfully")
+        } else {
+            let sanitizedRemaining = remainingKeys.map { sanitizedSubscriptionKey($0) }.sorted().joined(separator: ", ")
+            debugLog("resetOrphanedSubscriptions: failed to remove \(remainingKeys.count) key(s): [\(sanitizedRemaining)]")
+        }
+
         orphanedSubscriptionKeys = []
         orphanedSubscriptionTotal = 0
         updateMultiProviderMenu()
