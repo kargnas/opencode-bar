@@ -946,14 +946,28 @@ final class StatusBarController: NSObject {
                         }
 
                         // Build percentage array for display
-                        // Claude/Kimi: show both 5h and 7d usage windows
+                        // Claude: show 5h, 7d, and extra usage (if enabled)
+                        // Kimi: show both 5h and 7d usage windows
                         // Codex: show both primary (5h) and secondary (weekly) windows
                         // Z.AI: show both 5h token window and MCP usage
                         // Other providers: show single usage percentage
                         let usedPercents: [Double]
-                        if identifier == .claude || identifier == .kimi,
-                           let fiveHour = account.details?.fiveHourUsage,
-                           let sevenDay = account.details?.sevenDayUsage {
+                        if identifier == .claude,
+                           let details = account.details,
+                           let fiveHour = details.fiveHourUsage,
+                           let sevenDay = details.sevenDayUsage {
+                            var percents: [Double] = [fiveHour, sevenDay]
+                            if details.extraUsageEnabled == true,
+                               let limitUSD = details.extraUsageMonthlyLimitUSD,
+                               limitUSD > 0 {
+                                let usedUSD = details.extraUsageUsedUSD ?? 0
+                                let percent = details.extraUsageUtilizationPercent ?? ((usedUSD / limitUSD) * 100)
+                                percents.append(percent)
+                            }
+                            usedPercents = percents
+                        } else if identifier == .kimi,
+                                  let fiveHour = account.details?.fiveHourUsage,
+                                  let sevenDay = account.details?.sevenDayUsage {
                             usedPercents = [fiveHour, sevenDay]
                         } else if identifier == .codex,
                                   let secondary = account.details?.secondaryUsage {
@@ -979,9 +993,22 @@ final class StatusBarController: NSObject {
                     let singlePercent = entitlement > 0 ? (Double(entitlement - remaining) / Double(entitlement)) * 100 : 0
 
                     let usedPercents: [Double]
-                    if identifier == .claude || identifier == .kimi,
-                       let fiveHour = result.details?.fiveHourUsage,
-                       let sevenDay = result.details?.sevenDayUsage {
+                    if identifier == .claude,
+                       let details = result.details,
+                       let fiveHour = details.fiveHourUsage,
+                       let sevenDay = details.sevenDayUsage {
+                        var percents: [Double] = [fiveHour, sevenDay]
+                        if details.extraUsageEnabled == true,
+                           let limitUSD = details.extraUsageMonthlyLimitUSD,
+                           limitUSD > 0 {
+                            let usedUSD = details.extraUsageUsedUSD ?? 0
+                            let percent = details.extraUsageUtilizationPercent ?? ((usedUSD / limitUSD) * 100)
+                            percents.append(percent)
+                        }
+                        usedPercents = percents
+                    } else if identifier == .kimi,
+                              let fiveHour = result.details?.fiveHourUsage,
+                              let sevenDay = result.details?.sevenDayUsage {
                         usedPercents = [fiveHour, sevenDay]
                     } else if identifier == .codex,
                               let secondary = result.details?.secondaryUsage {

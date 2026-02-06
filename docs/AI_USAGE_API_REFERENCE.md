@@ -1,6 +1,6 @@
 # AI Usage API Reference
 
-> AI usage lookup API reference for OpenCode users
+> AI usage API reference for OpenCode users
 
 ## Token Locations
 
@@ -30,7 +30,12 @@ curl -s "https://api.anthropic.com/api/oauth/usage" \
   "seven_day": { "utilization": 4.0, "resets_at": "2026-02-05T15:00:00Z" },
   "seven_day_sonnet": { "utilization": 0.0, "resets_at": null },
   "seven_day_opus": null,
-  "extra_usage": { "is_enabled": false }
+  "extra_usage": {
+    "is_enabled": true,
+    "monthly_limit": 5000,
+    "used_credits": 0.0,
+    "utilization": null
+  }
 }
 ```
 
@@ -38,6 +43,10 @@ curl -s "https://api.anthropic.com/api/oauth/usage" \
 |-------|-------------|
 | `five_hour.utilization` | 5-hour window utilization (%) |
 | `seven_day.utilization` | 7-day window utilization (%) |
+| `extra_usage.is_enabled` | Whether extra usage is enabled |
+| `extra_usage.monthly_limit` | Extra usage monthly limit in cents (e.g., `5000` = `$50.00`) |
+| `extra_usage.used_credits` | Extra usage credits used this month (cents) |
+| `extra_usage.utilization` | Extra usage utilization percent (nullable) |
 
 ---
 
@@ -290,7 +299,7 @@ Client Secret: Set GEMINI_CLIENT_SECRET environment variable
 
 ## Scripts
 
-Test scripts are in the `scripts/` folder:
+Test scripts are located in the `scripts/` folder:
 
 | Script | Provider |
 |--------|----------|

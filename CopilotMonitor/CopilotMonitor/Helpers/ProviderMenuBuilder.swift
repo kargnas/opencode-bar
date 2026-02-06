@@ -246,6 +246,9 @@ extension StatusBarController {
                 )
                 items.forEach { submenu.addItem($0) }
             }
+            if details.fiveHourUsage != nil, details.sevenDayUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
+            }
             if let sevenDay = details.sevenDayUsage {
                 let items = createUsageWindowRow(
                     label: "Weekly",
@@ -257,7 +260,10 @@ extension StatusBarController {
             }
 
             // === Model Breakdown ===
-            submenu.addItem(NSMenuItem.separator())
+            let hasModelBreakdown = details.sonnetUsage != nil || details.opusUsage != nil
+            if hasModelBreakdown {
+                submenu.addItem(NSMenuItem.separator())
+            }
             if let sonnet = details.sonnetUsage {
                 let items = createUsageWindowRow(
                     label: "Sonnet (Weekly)",
@@ -266,6 +272,9 @@ extension StatusBarController {
                     windowHours: 168
                 )
                 items.forEach { submenu.addItem($0) }
+            }
+            if details.sonnetUsage != nil, details.opusUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
             }
             if let opus = details.opusUsage {
                 let items = createUsageWindowRow(
@@ -278,10 +287,37 @@ extension StatusBarController {
             }
 
             // === Extra Usage ===
-            if let extraUsage = details.extraUsageEnabled {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: "Extra Usage: \(extraUsage ? "ON" : "OFF")")
-                submenu.addItem(item)
+            if let extraUsageEnabled = details.extraUsageEnabled {
+                if details.sonnetUsage != nil || details.opusUsage != nil {
+                    submenu.addItem(NSMenuItem.separator())
+                }
+                let statusItem = NSMenuItem()
+                statusItem.view = createDisabledLabelView(text: "Extra Usage: \(extraUsageEnabled ? "ON" : "OFF")")
+                submenu.addItem(statusItem)
+
+                if extraUsageEnabled,
+                   let limitUSD = details.extraUsageMonthlyLimitUSD,
+                   limitUSD > 0 {
+                    let usedUSD = details.extraUsageUsedUSD ?? 0
+                    let percent = details.extraUsageUtilizationPercent ?? ((usedUSD / limitUSD) * 100)
+
+                    let rows = createUsageWindowRow(label: "Extra (Monthly)", usagePercent: percent)
+                    rows.forEach { submenu.addItem($0) }
+
+                    let limitItem = NSMenuItem()
+                    limitItem.view = createDisabledLabelView(
+                        text: String(format: "Limit: $%.2f/m", limitUSD),
+                        indent: MenuDesignToken.Spacing.submenuIndent
+                    )
+                    submenu.addItem(limitItem)
+
+                    let usedItem = NSMenuItem()
+                    usedItem.view = createDisabledLabelView(
+                        text: String(format: "Used: $%.2f", usedUSD),
+                        indent: MenuDesignToken.Spacing.submenuIndent
+                    )
+                    submenu.addItem(usedItem)
+                }
             }
 
             // === Subscription (includes separator internally) ===
@@ -298,6 +334,9 @@ extension StatusBarController {
                     windowHours: 5
                 )
                 items.forEach { submenu.addItem($0) }
+            }
+            if details.dailyUsage != nil, details.secondaryUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
             }
             if let secondary = details.secondaryUsage {
                 let items = createUsageWindowRow(
@@ -383,6 +422,9 @@ extension StatusBarController {
                     windowHours: 5
                 )
                 items.forEach { submenu.addItem($0) }
+            }
+            if details.fiveHourUsage != nil, details.sevenDayUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
             }
             if let weekly = details.sevenDayUsage {
                 let items = createUsageWindowRow(
@@ -639,6 +681,13 @@ extension StatusBarController {
         let dividerCount = didGroup ? max(0, groupedUsageWindows.count - 1) : 0
         debugLog("\(debugContext): adding \(dividerCount) divider(s) between model groups")
 
+        let shouldAddWindowInfoDivider = groupedUsageWindows.count == 1
+            && (groupedUsageWindows.first?.models.count ?? 0) > 1
+            && groupedUsageWindows.first?.resetDate != nil
+        if shouldAddWindowInfoDivider {
+            debugLog("\(debugContext): adding divider between model list and reset/pace info")
+        }
+
         // Keep one model per row to avoid long wrapped labels while still sharing reset/pace
         // for groups that have the same usage and quota reset window.
         for (groupIndex, grouped) in groupedUsageWindows.enumerated() {
@@ -651,6 +700,10 @@ extension StatusBarController {
             }
 
             if let resetDate = grouped.resetDate {
+                if groupIndex == 0, shouldAddWindowInfoDivider {
+                    addHorizontalDivider(to: submenu)
+                }
+
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
                 formatter.timeZone = TimeZone.current

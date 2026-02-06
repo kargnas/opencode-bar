@@ -19,9 +19,15 @@ struct ClaudeUsageResponse: Codable {
 
     struct ExtraUsage: Codable {
         let is_enabled: Bool?
+        let monthly_limit: Double?
+        let used_credits: Double?
+        let utilization: Double?
 
         enum CodingKeys: String, CodingKey {
             case is_enabled = "is_enabled"
+            case monthly_limit = "monthly_limit"
+            case used_credits = "used_credits"
+            case utilization = "utilization"
         }
     }
 
@@ -195,8 +201,19 @@ final class ClaudeProvider: ProviderProtocol {
             let opusReset = response.seven_day_opus?.resets_at.flatMap { parseISO8601Date($0) }
 
             let extraUsageEnabled = response.extra_usage?.is_enabled
+            let extraUsageMonthlyLimitCredits = response.extra_usage?.monthly_limit
+            let extraUsageUsedCredits = response.extra_usage?.used_credits
+            let extraUsageUtilizationPercent = response.extra_usage?.utilization
 
             logger.info("Claude usage fetched (\(account.authSource)): 7d=\(utilization)%, 5h=\(fiveHourUsage?.description ?? "N/A")%")
+
+            if let extraUsageEnabled {
+                let limitUSD = (extraUsageMonthlyLimitCredits ?? 0) / 100.0
+                let usedUSD = (extraUsageUsedCredits ?? 0) / 100.0
+                logger.info(
+                    "Claude extra usage (\(account.authSource)): enabled=\(extraUsageEnabled), limit=$\(String(format: "%.2f", limitUSD)), used=$\(String(format: "%.2f", usedUSD)), utilization=\(extraUsageUtilizationPercent?.description ?? "nil")"
+                )
+            }
 
             let usage = ProviderUsage.quotaBased(
                 remaining: Int(remaining),
@@ -214,6 +231,9 @@ final class ClaudeProvider: ProviderProtocol {
                 opusUsage: opusUsage,
                 opusReset: opusReset,
                 extraUsageEnabled: extraUsageEnabled,
+                extraUsageMonthlyLimitUSD: extraUsageMonthlyLimitCredits.map { $0 / 100.0 },
+                extraUsageUsedUSD: extraUsageUsedCredits.map { $0 / 100.0 },
+                extraUsageUtilizationPercent: extraUsageUtilizationPercent,
                 authSource: account.authSource
             )
 

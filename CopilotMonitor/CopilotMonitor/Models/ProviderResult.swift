@@ -75,6 +75,10 @@ struct DetailedUsage {
 
     // Claude extra usage toggle
     let extraUsageEnabled: Bool?
+    // Claude extra usage (monthly credits limit + usage)
+    let extraUsageMonthlyLimitUSD: Double?
+    let extraUsageUsedUSD: Double?
+    let extraUsageUtilizationPercent: Double?
 
     // OpenCode Zen stats
     let sessions: Int?
@@ -143,6 +147,9 @@ struct DetailedUsage {
         creditsBalance: Double? = nil,
         planType: String? = nil,
         extraUsageEnabled: Bool? = nil,
+        extraUsageMonthlyLimitUSD: Double? = nil,
+        extraUsageUsedUSD: Double? = nil,
+        extraUsageUtilizationPercent: Double? = nil,
         sessions: Int? = nil,
         messages: Int? = nil,
         avgCostPerDay: Double? = nil,
@@ -196,6 +203,9 @@ struct DetailedUsage {
         self.creditsBalance = creditsBalance
         self.planType = planType
         self.extraUsageEnabled = extraUsageEnabled
+        self.extraUsageMonthlyLimitUSD = extraUsageMonthlyLimitUSD
+        self.extraUsageUsedUSD = extraUsageUsedUSD
+        self.extraUsageUtilizationPercent = extraUsageUtilizationPercent
         self.sessions = sessions
         self.messages = messages
         self.avgCostPerDay = avgCostPerDay
@@ -235,6 +245,7 @@ extension DetailedUsage: Codable {
         case sonnetUsage, sonnetReset, opusUsage, opusReset, modelBreakdown, modelResetTimes
         case secondaryUsage, secondaryReset, primaryReset
         case creditsBalance, planType, extraUsageEnabled
+        case extraUsageMonthlyLimitUSD, extraUsageUsedUSD, extraUsageUtilizationPercent
         case sessions, messages, avgCostPerDay, email
         case dailyHistory, monthlyCost, creditsRemaining, creditsTotal
         case authSource, geminiAccounts
@@ -271,6 +282,9 @@ extension DetailedUsage: Codable {
         creditsBalance = try container.decodeIfPresent(Double.self, forKey: .creditsBalance)
         planType = try container.decodeIfPresent(String.self, forKey: .planType)
         extraUsageEnabled = try container.decodeIfPresent(Bool.self, forKey: .extraUsageEnabled)
+        extraUsageMonthlyLimitUSD = try container.decodeIfPresent(Double.self, forKey: .extraUsageMonthlyLimitUSD)
+        extraUsageUsedUSD = try container.decodeIfPresent(Double.self, forKey: .extraUsageUsedUSD)
+        extraUsageUtilizationPercent = try container.decodeIfPresent(Double.self, forKey: .extraUsageUtilizationPercent)
         sessions = try container.decodeIfPresent(Int.self, forKey: .sessions)
         messages = try container.decodeIfPresent(Int.self, forKey: .messages)
         avgCostPerDay = try container.decodeIfPresent(Double.self, forKey: .avgCostPerDay)
@@ -327,6 +341,9 @@ extension DetailedUsage: Codable {
         try container.encodeIfPresent(creditsBalance, forKey: .creditsBalance)
         try container.encodeIfPresent(planType, forKey: .planType)
         try container.encodeIfPresent(extraUsageEnabled, forKey: .extraUsageEnabled)
+        try container.encodeIfPresent(extraUsageMonthlyLimitUSD, forKey: .extraUsageMonthlyLimitUSD)
+        try container.encodeIfPresent(extraUsageUsedUSD, forKey: .extraUsageUsedUSD)
+        try container.encodeIfPresent(extraUsageUtilizationPercent, forKey: .extraUsageUtilizationPercent)
         try container.encodeIfPresent(sessions, forKey: .sessions)
         try container.encodeIfPresent(messages, forKey: .messages)
         try container.encodeIfPresent(avgCostPerDay, forKey: .avgCostPerDay)
@@ -404,6 +421,7 @@ extension DetailedUsage {
             || secondaryUsage != nil || secondaryReset != nil || primaryReset != nil
             || creditsBalance != nil || planType != nil
             || extraUsageEnabled != nil
+            || extraUsageMonthlyLimitUSD != nil || extraUsageUsedUSD != nil || extraUsageUtilizationPercent != nil
             || sessions != nil || messages != nil || avgCostPerDay != nil
             || email != nil
             || dailyHistory != nil || monthlyCost != nil
