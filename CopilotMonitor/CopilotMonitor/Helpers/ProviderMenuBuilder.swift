@@ -1,6 +1,62 @@
 import AppKit
 import Foundation
 
+struct GeminiGroupedUsageWindow {
+    let models: [String]
+    let usedPercent: Double
+    let resetDate: Date?
+
+    var primaryModelForSort: String {
+        models.first ?? ""
+    }
+}
+
+enum GeminiModelUsageGrouper {
+    private struct GroupKey: Hashable {
+        let remainingPercentBitPattern: UInt64
+        let resetEpochSecond: Int?
+    }
+
+    static func groupedUsageWindows(
+        modelBreakdown: [String: Double],
+        modelResetTimes: [String: Date]
+    ) -> [GeminiGroupedUsageWindow] {
+        var modelsByKey: [GroupKey: [String]] = [:]
+        var groupDetailsByKey: [GroupKey: (remainingPercent: Double, resetDate: Date?)] = [:]
+
+        for (model, remainingPercent) in modelBreakdown {
+            let resetDate = modelResetTimes[model]
+            // Group only when quota usage and reset window are truly identical.
+            let key = GroupKey(
+                remainingPercentBitPattern: remainingPercent.bitPattern,
+                resetEpochSecond: resetDate.map { Int($0.timeIntervalSince1970) }
+            )
+            modelsByKey[key, default: []].append(model)
+            groupDetailsByKey[key] = (remainingPercent: remainingPercent, resetDate: resetDate)
+        }
+
+        return modelsByKey
+            .map { key, models in
+                let sortedModels = models.sorted {
+                    $0.localizedStandardCompare($1) == .orderedAscending
+                }
+                let detail = groupDetailsByKey[key]
+                let remainingPercent = detail?.remainingPercent ?? 100.0
+                return GeminiGroupedUsageWindow(
+                    models: sortedModels,
+                    usedPercent: max(0.0, 100.0 - remainingPercent),
+                    resetDate: detail?.resetDate
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.usedPercent != rhs.usedPercent {
+                    return lhs.usedPercent > rhs.usedPercent
+                }
+                return lhs.primaryModelForSort.localizedStandardCompare(rhs.primaryModelForSort) == .orderedAscending
+            }
+    }
+}
+
 extension StatusBarController {
 
     func createDetailSubmenu(_ details: DetailedUsage, identifier: ProviderIdentifier, accountId: String? = nil) -> NSMenu {
@@ -557,17 +613,42 @@ extension StatusBarController {
     func createGeminiAccountSubmenu(_ account: GeminiAccountQuota) -> NSMenu {
         let submenu = NSMenu()
 
-        // modelBreakdown stores remaining% — convert to used% at display layer
-        // Gemini models have 24-hour quota windows
-        for (model, remainingPercent) in account.modelBreakdown.sorted(by: { $0.key < $1.key }) {
-            let usedPercent = 100 - remainingPercent
-            let items = createUsageWindowRow(
-                label: model,
-                usagePercent: usedPercent,
-                resetDate: account.modelResetTimes[model],
-                windowHours: 24
+        let groupedUsageWindows = GeminiModelUsageGrouper.groupedUsageWindows(
+            modelBreakdown: account.modelBreakdown,
+            modelResetTimes: account.modelResetTimes
+        )
+        debugLog(
+            "createGeminiAccountSubmenu: grouped \(account.modelBreakdown.count) model buckets into \(groupedUsageWindows.count) rows for \(account.email)"
+        )
+
+        // Keep one model per row to avoid long wrapped labels while still sharing reset/pace
+        // for groups that have the same usage and quota reset window.
+        for grouped in groupedUsageWindows {
+            for model in grouped.models {
+                let usageItem = NSMenuItem()
+                usageItem.view = createDisabledLabelView(
+                    text: String(format: "%@: %.0f%% used", model, grouped.usedPercent)
+                )
+                submenu.addItem(usageItem)
+            }
+
+            guard let resetDate = grouped.resetDate else { continue }
+
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+            formatter.timeZone = TimeZone.current
+
+            let resetItem = NSMenuItem()
+            resetItem.view = createDisabledLabelView(
+                text: "Resets: \(formatter.string(from: resetDate))",
+                indent: MenuDesignToken.Spacing.submenuIndent
             )
-            items.forEach { submenu.addItem($0) }
+            submenu.addItem(resetItem)
+
+            let paceInfo = calculatePace(usage: grouped.usedPercent, resetTime: resetDate, windowHours: 24)
+            let paceItem = NSMenuItem()
+            paceItem.view = createPaceView(paceInfo: paceInfo)
+            submenu.addItem(paceItem)
         }
 
         let accountItems: [(sfSymbol: String, text: String)] = [
