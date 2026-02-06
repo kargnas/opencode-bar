@@ -246,6 +246,9 @@ extension StatusBarController {
                 )
                 items.forEach { submenu.addItem($0) }
             }
+            if details.fiveHourUsage != nil, details.sevenDayUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
+            }
             if let sevenDay = details.sevenDayUsage {
                 let items = createUsageWindowRow(
                     label: "Weekly",
@@ -257,7 +260,10 @@ extension StatusBarController {
             }
 
             // === Model Breakdown ===
-            submenu.addItem(NSMenuItem.separator())
+            let hasModelBreakdown = details.sonnetUsage != nil || details.opusUsage != nil
+            if hasModelBreakdown {
+                submenu.addItem(NSMenuItem.separator())
+            }
             if let sonnet = details.sonnetUsage {
                 let items = createUsageWindowRow(
                     label: "Sonnet (Weekly)",
@@ -266,6 +272,9 @@ extension StatusBarController {
                     windowHours: 168
                 )
                 items.forEach { submenu.addItem($0) }
+            }
+            if details.sonnetUsage != nil, details.opusUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
             }
             if let opus = details.opusUsage {
                 let items = createUsageWindowRow(
@@ -279,6 +288,9 @@ extension StatusBarController {
 
             // === Extra Usage ===
             if let extraUsageEnabled = details.extraUsageEnabled {
+                if details.sonnetUsage != nil || details.opusUsage != nil {
+                    submenu.addItem(NSMenuItem.separator())
+                }
                 let statusItem = NSMenuItem()
                 statusItem.view = createDisabledLabelView(text: "Extra Usage: \(extraUsageEnabled ? "ON" : "OFF")")
                 submenu.addItem(statusItem)
@@ -322,6 +334,9 @@ extension StatusBarController {
                     windowHours: 5
                 )
                 items.forEach { submenu.addItem($0) }
+            }
+            if details.dailyUsage != nil, details.secondaryUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
             }
             if let secondary = details.secondaryUsage {
                 let items = createUsageWindowRow(
@@ -407,6 +422,9 @@ extension StatusBarController {
                     windowHours: 5
                 )
                 items.forEach { submenu.addItem($0) }
+            }
+            if details.fiveHourUsage != nil, details.sevenDayUsage != nil {
+                submenu.addItem(NSMenuItem.separator())
             }
             if let weekly = details.sevenDayUsage {
                 let items = createUsageWindowRow(
