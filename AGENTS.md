@@ -224,6 +224,10 @@ func buildProviderSubmenu() -> [NSMenuItem] {
   - Total Requests: Always sum both `includedRequests` AND `billedRequests` for accurate predictions
   - Prediction Algorithms: Use `totalRequests` (not just `included`) for weighted average calculations
   - UI Display: Show total requests in daily usage breakdown, not just included
+- **Multi-Window Quota Summary Display**:
+  - If a provider exposes multiple quota windows/limits, show all relevant usage percentages in the top-level quota row (comma-separated).
+  - Keep a stable order: primary window first (e.g., 5h) then secondary (weekly/MCP).
+  - Examples: Claude/Kimi (5h, 7d), Codex (5h, weekly), Z.AI (5h, MCP).
  - **DMG Packaging Cleanliness**:
    - Staging Directory: Create clean staging dir containing ONLY app bundle and Applications symlink
    - Exclude Files: Prevent `Packaging.log`, `DistributionSummary.plist`, and other Xcode artifacts from DMG
@@ -245,7 +249,7 @@ func buildProviderSubmenu() -> [NSMenuItem] {
 - **Language Policy Enforcement**:
    - All Log Messages Must Be English: Including debug logs, error messages, and informational logging
    - Pattern: After code changes, review log messages for Korean text and translate to English
-   - Example: "fetchUsage 시작" → "fetchUsage started", "API ID 확보 성공" → "API ID obtained successfully"
+   - Example: Replace non-English log strings with clear English equivalents (e.g., "fetchUsage started", "API ID obtained successfully").
    - Reference: AGENTS.md Language section requires all code comments, logs, and messages to be in English
 - **Debug Code Cleanup**:
    - Remove Development Logging Before Commits: File-based debug logging (`/tmp/*.log`) should be removed after troubleshooting

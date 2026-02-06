@@ -940,6 +940,7 @@ final class StatusBarController: NSObject {
                         // Build percentage array for display
                         // Claude/Kimi: show both 5h and 7d usage windows
                         // Codex: show both primary (5h) and secondary (weekly) windows
+                        // Z.AI: show both 5h token window and MCP usage
                         // Other providers: show single usage percentage
                         let usedPercents: [Double]
                         if identifier == .claude || identifier == .kimi,
@@ -949,6 +950,9 @@ final class StatusBarController: NSObject {
                         } else if identifier == .codex,
                                   let secondary = account.details?.secondaryUsage {
                             usedPercents = [account.usage.usagePercentage, secondary]
+                        } else if identifier == .zaiCodingPlan {
+                            let percents = [account.details?.tokenUsagePercent, account.details?.mcpUsagePercent].compactMap { $0 }
+                            usedPercents = percents.isEmpty ? [account.usage.usagePercentage] : percents
                         } else {
                             usedPercents = [account.usage.usagePercentage]
                         }
@@ -974,6 +978,9 @@ final class StatusBarController: NSObject {
                     } else if identifier == .codex,
                               let secondary = result.details?.secondaryUsage {
                         usedPercents = [singlePercent, secondary]
+                    } else if identifier == .zaiCodingPlan {
+                        let percents = [result.details?.tokenUsagePercent, result.details?.mcpUsagePercent].compactMap { $0 }
+                        usedPercents = percents.isEmpty ? [singlePercent] : percents
                     } else {
                         usedPercents = [singlePercent]
                     }
