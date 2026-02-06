@@ -59,4 +59,3 @@ final class OpenCodeAuthDecodingTests: XCTestCase {
         XCTAssertEqual(auth.openai?.accountId, "123")
     }
 }
-
