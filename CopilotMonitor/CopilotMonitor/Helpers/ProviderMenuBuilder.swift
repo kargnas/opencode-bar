@@ -278,10 +278,34 @@ extension StatusBarController {
             }
 
             // === Extra Usage ===
-            if let extraUsage = details.extraUsageEnabled {
-                let item = NSMenuItem()
-                item.view = createDisabledLabelView(text: "Extra Usage: \(extraUsage ? "ON" : "OFF")")
-                submenu.addItem(item)
+            if let extraUsageEnabled = details.extraUsageEnabled {
+                let statusItem = NSMenuItem()
+                statusItem.view = createDisabledLabelView(text: "Extra Usage: \(extraUsageEnabled ? "ON" : "OFF")")
+                submenu.addItem(statusItem)
+
+                if extraUsageEnabled,
+                   let limitUSD = details.extraUsageMonthlyLimitUSD,
+                   limitUSD > 0 {
+                    let usedUSD = details.extraUsageUsedUSD ?? 0
+                    let percent = details.extraUsageUtilizationPercent ?? ((usedUSD / limitUSD) * 100)
+
+                    let rows = createUsageWindowRow(label: "Extra (Monthly)", usagePercent: percent)
+                    rows.forEach { submenu.addItem($0) }
+
+                    let limitItem = NSMenuItem()
+                    limitItem.view = createDisabledLabelView(
+                        text: String(format: "Limit: $%.2f/m", limitUSD),
+                        indent: MenuDesignToken.Spacing.submenuIndent
+                    )
+                    submenu.addItem(limitItem)
+
+                    let usedItem = NSMenuItem()
+                    usedItem.view = createDisabledLabelView(
+                        text: String(format: "Used: $%.2f", usedUSD),
+                        indent: MenuDesignToken.Spacing.submenuIndent
+                    )
+                    submenu.addItem(usedItem)
+                }
             }
 
             // === Subscription (includes separator internally) ===
