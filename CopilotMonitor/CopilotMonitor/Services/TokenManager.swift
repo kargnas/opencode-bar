@@ -19,11 +19,150 @@ struct OpenCodeAuth: Codable {
             case type, access, refresh, expires
             case accountId = "accountId"
         }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+
+            type = (try? container.decode(String.self, forKey: .type)) ?? "oauth"
+
+            let rawAccess = try container.decode(String.self, forKey: .access)
+            let trimmedAccess = rawAccess.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedAccess.isEmpty {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .access,
+                    in: container,
+                    debugDescription: "OAuth access token is empty"
+                )
+            }
+            access = trimmedAccess
+
+            refresh = (try? container.decode(String.self, forKey: .refresh))?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? ""
+
+            expires = Self.decodeFlexibleInt64(from: container, forKey: .expires) ?? 0
+            accountId = Self.decodeFlexibleString(from: container, forKey: .accountId)
+        }
+
+        private static func decodeFlexibleInt64(
+            from container: KeyedDecodingContainer<CodingKeys>,
+            forKey key: CodingKeys
+        ) -> Int64? {
+            if let value = decodeLossyIfPresent(Int64.self, from: container, forKey: key) {
+                return value
+            }
+            if let value = decodeLossyIfPresent(Int.self, from: container, forKey: key) {
+                return Int64(value)
+            }
+            if let value = decodeLossyIfPresent(Double.self, from: container, forKey: key) {
+                return Int64(value)
+            }
+            if let value = decodeLossyIfPresent(String.self, from: container, forKey: key) {
+                return Int64(value.trimmingCharacters(in: .whitespacesAndNewlines))
+            }
+            return nil
+        }
+
+        private static func decodeFlexibleString(
+            from container: KeyedDecodingContainer<CodingKeys>,
+            forKey key: CodingKeys
+        ) -> String? {
+            if let value = decodeLossyIfPresent(String.self, from: container, forKey: key) {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? nil : trimmed
+            }
+            if let value = decodeLossyIfPresent(Int.self, from: container, forKey: key) {
+                return String(value)
+            }
+            if let value = decodeLossyIfPresent(Int64.self, from: container, forKey: key) {
+                return String(value)
+            }
+            if let value = decodeLossyIfPresent(Double.self, from: container, forKey: key) {
+                let asInt = Int64(value)
+                return String(asInt)
+            }
+            return nil
+        }
+
+        private static func decodeLossyIfPresent<T: Decodable>(
+            _ type: T.Type,
+            from container: KeyedDecodingContainer<CodingKeys>,
+            forKey key: CodingKeys
+        ) -> T? {
+            do {
+                return try container.decodeIfPresent(T.self, forKey: key)
+            } catch {
+                return nil
+            }
+        }
     }
 
     struct APIKey: Codable {
         let type: String
         let key: String
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case key
+            case access
+            case token
+            case apiKey
+            case value
+        }
+
+        init(from decoder: Decoder) throws {
+            if let singleValue = try? decoder.singleValueContainer(),
+               let rawKey = try? singleValue.decode(String.self) {
+                let trimmed = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    throw DecodingError.dataCorruptedError(
+                        in: singleValue,
+                        debugDescription: "API key value is empty"
+                    )
+                }
+                type = "apiKey"
+                key = trimmed
+                return
+            }
+
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            type = (try? container.decode(String.self, forKey: .type)) ?? "apiKey"
+
+            let candidateKeys: [CodingKeys] = [.key, .access, .token, .apiKey, .value]
+            var resolvedKey: String?
+            for candidate in candidateKeys {
+                let value: String?
+                do {
+                    value = try container.decodeIfPresent(String.self, forKey: candidate)
+                } catch {
+                    value = nil
+                }
+                if let value {
+                    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        resolvedKey = trimmed
+                        break
+                    }
+                }
+            }
+
+            guard let resolvedKey else {
+                throw DecodingError.keyNotFound(
+                    CodingKeys.key,
+                    DecodingError.Context(
+                        codingPath: container.codingPath,
+                        debugDescription: "No API key field found (expected one of: key/access/token/apiKey/value)"
+                    )
+                )
+            }
+            key = resolvedKey
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(type, forKey: .type)
+            try container.encode(key, forKey: .key)
+        }
     }
 
     let anthropic: OAuth?
@@ -67,15 +206,44 @@ struct OpenCodeAuth: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        anthropic = try container.decodeIfPresent(OAuth.self, forKey: .anthropic)
-        openai = try container.decodeIfPresent(OAuth.self, forKey: .openai)
-        githubCopilot = try container.decodeIfPresent(OAuth.self, forKey: .githubCopilot)
-        openrouter = try container.decodeIfPresent(APIKey.self, forKey: .openrouter)
-        opencode = try container.decodeIfPresent(APIKey.self, forKey: .opencode)
-        kimiForCoding = try container.decodeIfPresent(APIKey.self, forKey: .kimiForCoding)
-        zaiCodingPlan = try container.decodeIfPresent(APIKey.self, forKey: .zaiCodingPlan)
-        synthetic = try container.decodeIfPresent(APIKey.self, forKey: .synthetic)
-        chutes = try container.decodeIfPresent(APIKey.self, forKey: .chutes)
+        anthropic = Self.decodeLossyIfPresent(OAuth.self, from: container, forKey: .anthropic)
+        openai = Self.decodeLossyIfPresent(OAuth.self, from: container, forKey: .openai)
+        githubCopilot = Self.decodeLossyIfPresent(OAuth.self, from: container, forKey: .githubCopilot)
+        openrouter = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .openrouter)
+        opencode = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .opencode)
+        kimiForCoding = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .kimiForCoding)
+        zaiCodingPlan = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .zaiCodingPlan)
+        synthetic = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .synthetic)
+        chutes = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .chutes)
+
+        if anthropic == nil,
+           openai == nil,
+           githubCopilot == nil,
+           openrouter == nil,
+           opencode == nil,
+           kimiForCoding == nil,
+           zaiCodingPlan == nil,
+           synthetic == nil,
+           chutes == nil {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "No valid auth entries found in auth.json"
+                )
+            )
+        }
+    }
+
+    private static func decodeLossyIfPresent<T: Decodable>(
+        _ type: T.Type,
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) -> T? {
+        do {
+            return try container.decodeIfPresent(T.self, forKey: key)
+        } catch {
+            return nil
+        }
     }
 
     func encode(to encoder: Encoder) throws {

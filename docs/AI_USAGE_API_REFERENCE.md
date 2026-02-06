@@ -121,8 +121,8 @@ curl -s "https://api.github.com/copilot_internal/user" \
 
 | Field | Description |
 |-------|-------------|
-| `premium_interactions.entitlement` | Monthly premium requests entitlement |
-| `premium_interactions.remaining` | Remaining requests (negative = overage) |
+| `premium_interactions.entitlement` | Monthly premium request entitlement |
+| `premium_interactions.remaining` | Remaining request count (negative = overage) |
 
 ---
 
