@@ -179,9 +179,15 @@ final class GeminiCLIProvider: ProviderProtocol {
     private func mergeCandidates(primary: GeminiAccountCandidate, secondary: GeminiAccountCandidate) -> GeminiAccountCandidate {
         let mergedLabels = mergeSourceLabels(primary.sourceLabels, secondary.sourceLabels)
         let mergedAuthUsageSummary = sourceSummary(mergedLabels, fallback: "Unknown")
+
+        // Fallback to secondary email when primary has none (different auth sources may carry different metadata)
+        let mergedEmail = (primary.quota.email.isEmpty || primary.quota.email == "Unknown")
+            ? secondary.quota.email
+            : primary.quota.email
+
         let mergedQuota = GeminiAccountQuota(
             accountIndex: primary.quota.accountIndex,
-            email: primary.quota.email,
+            email: mergedEmail,
             remainingPercentage: primary.quota.remainingPercentage,
             modelBreakdown: primary.quota.modelBreakdown,
             authSource: primary.quota.authSource,

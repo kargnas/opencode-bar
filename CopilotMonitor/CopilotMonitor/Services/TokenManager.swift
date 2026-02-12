@@ -1000,7 +1000,9 @@ final class TokenManager: @unchecked Sendable {
                                     source: .codexLB
                                 )
                             )
-                            logger.info(
+                            // PII fields (email, account ID) kept at debug level to avoid
+                            // leaking personal info in production console logs.
+                            logger.debug(
                                 """
                                 codex-lb account loaded: id=\(normalizedAccountId ?? "nil"), \
                                 email=\(encryptedAccount.email ?? "unknown"), \

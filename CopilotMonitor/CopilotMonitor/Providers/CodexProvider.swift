@@ -149,6 +149,11 @@ final class CodexProvider: ProviderProtocol {
         var mergedDetails = primary.details
         mergedDetails.authUsageSummary = sourceSummary(mergedLabels, fallback: "Unknown")
 
+        // Fallback to secondary email when primary has none (different auth sources may carry different metadata)
+        if mergedDetails.email == nil || mergedDetails.email?.isEmpty == true {
+            mergedDetails.email = secondary.details.email
+        }
+
         return CodexAccountCandidate(
             accountId: primary.accountId,
             usage: primary.usage,
