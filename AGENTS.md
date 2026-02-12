@@ -610,13 +610,29 @@ func buildProviderSubmenu() -> [NSMenuItem] {
         - Generic Implementation: Use closures for `accountId`, `isSameUsage`, `priority` to make it type-agnostic
         - Pattern: Replace private methods with shared generic helpers for cross-provider operations
         - Example: All 4 providers now call `CandidateDedupe.merge()` instead of their own implementations
-    - **File Readability Check Before Access**:
+     - **File Readability Check Before Access**:
         - Silent Failures: Files exist but are not readable due to permissions cause runtime errors
         - Missing Validation: `FileManager.fileExists()` only checks existence, not readability
         - Fix: Add `isReadableFile(atPath:)` check before attempting to read file contents
         - Safety Pattern: `guard fileManager.fileExists(atPath: path), guard fileManager.isReadableFile(atPath: path)`
         - Warning Logging: Log warning when file is not readable for troubleshooting
-        - Implementation: Add check in `TokenManager.swift` for Gemini OAuth, Codex auth, Antigravity accounts
+        - Implementation: Add readability check before reading configuration files (auth files, account databases)
         - Benefit: Prevents crashes and provides better error messages for permission issues
- 
-    <!-- opencode:reflection:end -->
+     - **Mixed Provider Schema Handling in auth.json**:
+        - Problem: Single provider entry with unexpected schema (e.g., `openai` stored as API key instead of OAuth) causes entire auth.json decoding to fail
+        - Impact: App cannot read any providers even if only one entry has schema mismatch, preventing app from functioning
+        - Fix: Implement per-entry graceful failure decoding that doesn't propagate errors to root level
+        - Pattern: Use `decodeLossyIfPresent()` wrapper that returns nil instead of throwing when decoding fails
+        - Type Flexibility: Support multiple numeric types (Int64, Int, Double, String) and string types (String, Int, Int64, Double)
+        - Example: Implemented flexible decoding functions that try each type sequentially
+        - Benefit: Mixed schema auth.json files can be partially parsed, allowing valid entries to work despite invalid entries
+        - Test Coverage: Add tests for unexpected schemas to ensure graceful degradation continues to work
+     - **Git Commit Message Language Policy Enforcement**:
+        - Policy Violation: Project policy requires all commit messages to be in English
+        - Example Failure: Commit had Korean message instead of English translation
+        - Correct Format: Translate all non-English commit messages to English before committing
+        - Enforcement: Use git hooks or pre-commit validation to check commit message language
+        - Pattern: Validate commit message doesn't contain Korean/Chinese/Japanese characters before accepting commit
+        - Reference: Project policy states "All of comments in code base, commit message, PR content and title should be written in English"
+
+     <!-- opencode:reflection:end -->
