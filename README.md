@@ -56,20 +56,20 @@ Download the latest `.dmg` file from the [**Releases**](https://github.com/opggi
 | **Chutes AI** | Quota-based | Daily quota limits (300/2000/5000), credits balance |
 | **GitHub Copilot** | Quota-based | Daily history, overage tracking |
 
-### Custom Providers
+### OpenCode Plugins
+- **Antigravity/Gemini**
+  - `NoeFabris/opencode-antigravity-auth` (writes `~/.config/opencode/antigravity-accounts.json`)
+  - `jenslys/opencode-gemini-auth` (writes `google.oauth` in OpenCode `auth.json`)
+- **Claude**: `anomalyco/opencode-anthropic-auth`
 
-- OpenCode plugins
-  - **Antigravity/Gemini**
-    - `NoeFabris/opencode-antigravity-auth` (writes `~/.config/opencode/antigravity-accounts.json`)
-    - `jenslys/opencode-gemini-auth` (writes `google.oauth` in OpenCode `auth.json`)
-  - **Claude**: `anomalyco/opencode-anthropic-auth`
-- Standalone tools
-  - **Codex**: `Soju06/codex-lb`
-- Other AI agents beyond OpenCode that supports auto-detection
-  - **Codex**
-    - **Codex for Mac** - Auto-detected through `~/.codex/auth.json`
-    - **Codex CLI** - Auto-detected through `~/.codex/auth.json`
-  - **Claude Code** - Keychain-based authentication detection
+### Standalone tools
+- **Codex**: `Soju06/codex-lb`
+
+### Other AI agents beyond OpenCode that supports auto-detection
+- **Codex**
+  - **Codex for Mac** - Auto-detected through `~/.codex/auth.json`
+  - **Codex CLI** - Auto-detected through `~/.codex/auth.json`
+- **Claude Code CLI** - Keychain-based authentication detection
 
 ## Features
 
