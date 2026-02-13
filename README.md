@@ -1,5 +1,9 @@
 # OpenCode Bar
 
+- 🎉 Supports Codex 5.3 Spark Usage! (Feb 13, 2026)
+
+---
+
 <p align="center">
   <img src="docs/screenshot-subscription.png" alt="OpenCode Bar Screenshot" width="40%">
   <img src="docs/screenshot3.png" alt="OpenCode Bar Screenshot" width="40%">
@@ -19,12 +23,6 @@
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/swift-5.9-orange?style=flat-square" alt="Swift">
 </p>
-
----
-
-### Update
-
-- 🎉 Supports Codex 5.3 Spark Usage! (Feb 13, 2026)
 
 ---
 
