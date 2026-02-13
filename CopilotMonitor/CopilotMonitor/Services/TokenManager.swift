@@ -507,6 +507,10 @@ private struct GeminiIDTokenPayload: Decodable {
     }
 }
 
+private struct OpenAIIDTokenPayload: Decodable {
+    let email: String?
+}
+
 /// Gemini OAuth token response structure
 struct GeminiTokenResponse: Codable {
     let access_token: String
@@ -1189,11 +1193,13 @@ final class TokenManager: @unchecked Sendable {
         var keyOrder: [String] = []
 
         for account in accounts {
-            let normalizedAccountId = account.accountId?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedAccountId = normalizedNonEmpty(account.accountId)
+            let normalizedEmail = normalizedNonEmpty(account.email)?.lowercased()
             let dedupeKey: String
             if let normalizedAccountId, !normalizedAccountId.isEmpty {
                 dedupeKey = "id:\(normalizedAccountId)"
+            } else if let normalizedEmail, !normalizedEmail.isEmpty {
+                dedupeKey = "email:\(normalizedEmail)"
             } else {
                 dedupeKey = "token:\(account.accessToken)"
             }
@@ -1215,7 +1221,37 @@ final class TokenManager: @unchecked Sendable {
             accountsByKey[dedupeKey] = account
         }
 
-        return keyOrder.compactMap { accountsByKey[$0] }
+        let primaryDeduped = keyOrder.compactMap { accountsByKey[$0] }
+
+        // Secondary merge by email to bridge sources where one account is missing accountId
+        // but can still be identified by id_token email (Codex auth vs codex-lb).
+        var emailIndexMap: [String: Int] = [:]
+        var mergedResults: [OpenAIAuthAccount] = []
+
+        for account in primaryDeduped {
+            guard let normalizedEmail = normalizedNonEmpty(account.email)?.lowercased(),
+                  !normalizedEmail.isEmpty else {
+                mergedResults.append(account)
+                continue
+            }
+
+            if let existingIndex = emailIndexMap[normalizedEmail] {
+                let existing = mergedResults[existingIndex]
+                let accountPriority = priority(for: account.source)
+                let existingPriority = priority(for: existing.source)
+                if accountPriority > existingPriority {
+                    mergedResults[existingIndex] = mergeOpenAIAccount(primary: account, fallback: existing)
+                } else {
+                    mergedResults[existingIndex] = mergeOpenAIAccount(primary: existing, fallback: account)
+                }
+                continue
+            }
+
+            emailIndexMap[normalizedEmail] = mergedResults.count
+            mergedResults.append(account)
+        }
+
+        return mergedResults
     }
 
     private func mergeOpenAIAccount(primary: OpenAIAuthAccount, fallback: OpenAIAuthAccount) -> OpenAIAuthAccount {
@@ -1737,11 +1773,13 @@ final class TokenManager: @unchecked Sendable {
                 .appendingPathComponent(".codex")
                 .appendingPathComponent("auth.json")
                 .path
+            let idTokenPayload = decodeOpenAIIDTokenPayload(codexAuth.tokens?.idToken)
+            let codexEmail = normalizedNonEmpty(idTokenPayload?.email)
             accounts.append(
                 OpenAIAuthAccount(
                     accessToken: access,
                     accountId: codexAuth.tokens?.accountId,
-                    email: nil,
+                    email: codexEmail,
                     authSource: authSource,
                     sourceLabels: [openAISourceLabel(for: .codexAuth)],
                     source: .codexAuth
@@ -1901,6 +1939,26 @@ final class TokenManager: @unchecked Sendable {
             return try JSONDecoder().decode(GeminiIDTokenPayload.self, from: data)
         } catch {
             logger.warning("Failed to decode Gemini id_token payload: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func decodeOpenAIIDTokenPayload(_ idToken: String?) -> OpenAIIDTokenPayload? {
+        guard let token = normalizedNonEmpty(idToken) else {
+            return nil
+        }
+
+        let parts = token.split(separator: ".")
+        guard parts.count >= 2 else {
+            return nil
+        }
+
+        let payload = String(parts[1])
+        do {
+            let data = try decodeBase64URL(payload)
+            return try JSONDecoder().decode(OpenAIIDTokenPayload.self, from: data)
+        } catch {
+            logger.warning("Failed to decode OpenAI id_token payload: \(error.localizedDescription)")
             return nil
         }
     }
