@@ -808,7 +808,7 @@ extension StatusBarController {
             && (groupedUsageWindows.first?.models.count ?? 0) > 1
             && groupedUsageWindows.first?.resetDate != nil
         if shouldAddWindowInfoDivider {
-            debugLog("\(debugContext): adding divider between model list and reset/pace info")
+            debugLog("\(debugContext): adding divider between model list and pace/reset info")
         }
 
         // Keep one model per row to avoid long wrapped labels while still sharing reset/pace
@@ -827,6 +827,11 @@ extension StatusBarController {
                     addHorizontalDivider(to: submenu)
                 }
 
+                let paceInfo = calculatePace(usage: grouped.usedPercent, resetTime: resetDate, windowHours: paceWindowHours)
+                let paceItem = NSMenuItem()
+                paceItem.view = createPaceView(paceInfo: paceInfo)
+                submenu.addItem(paceItem)
+
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
                 formatter.timeZone = TimeZone.current
@@ -834,14 +839,12 @@ extension StatusBarController {
                 let resetItem = NSMenuItem()
                 resetItem.view = createDisabledLabelView(
                     text: "Resets: \(formatter.string(from: resetDate))",
-                    indent: MenuDesignToken.Spacing.submenuIndent
+                    indent: 0,
+                    textColor: .secondaryLabelColor
                 )
                 submenu.addItem(resetItem)
-
-                let paceInfo = calculatePace(usage: grouped.usedPercent, resetTime: resetDate, windowHours: paceWindowHours)
-                let paceItem = NSMenuItem()
-                paceItem.view = createPaceView(paceInfo: paceInfo)
-                submenu.addItem(paceItem)
+                debugLog("\(debugContext): reset row tone aligned with pace text")
+                debugLog("\(debugContext): group \(groupIndex) order applied -> pace row above reset row")
             }
 
             if groupIndex < groupedUsageWindows.count - 1 {
@@ -1180,10 +1183,9 @@ extension StatusBarController {
 
         let view = NSView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: itemHeight))
 
-        let indentedLeading: CGFloat = leadingOffset + MenuDesignToken.Spacing.submenuIndent
         let paceText = paceInfo.paceRateText
         debugLog("createPaceView: pace label computed: \(paceText)")
-        let leftTextField = NSTextField(labelWithString: "Pace: \(paceText)")
+        let leftTextField = NSTextField(labelWithString: "Speed: \(paceText)")
         leftTextField.font = NSFont.systemFont(ofSize: fontSize)
         leftTextField.textColor = .secondaryLabelColor
         leftTextField.lineBreakMode = .byTruncatingTail
@@ -1197,12 +1199,13 @@ extension StatusBarController {
         leftTextField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(leftTextField)
         NSLayoutConstraint.activate([
-            leftTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: indentedLeading),
+            leftTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: leadingOffset),
             leftTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
 
         let hasTooFast = paceInfo.status == .tooFast
         var rightEdge = menuWidth - trailingMargin
+        let emphasisColor = paceInfo.status.color
 
         if hasTooFast {
             let rabbitView = createRunningRabbitView()
@@ -1216,7 +1219,7 @@ extension StatusBarController {
         if let dotImage = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Status") {
             let config = NSImage.SymbolConfiguration(pointSize: statusDotSize, weight: .regular)
             dotImageView.image = dotImage.withSymbolConfiguration(config)
-            dotImageView.contentTintColor = paceInfo.status.color
+            dotImageView.contentTintColor = emphasisColor
         }
         view.addSubview(dotImageView)
         let dotSpacing = MenuDesignToken.Spacing.trailingMargin - MenuDesignToken.Dimension.statusDotSize
@@ -1224,35 +1227,48 @@ extension StatusBarController {
 
         let rightTextField = NSTextField(labelWithString: "")
         let rightAttributedString = NSMutableAttributedString()
+        let exhaustedStatusTextField = NSTextField(labelWithString: "")
         if paceInfo.isExhausted {
             let waitText = formatRemainingTime(seconds: paceInfo.remainingSeconds)
             debugLog("createPaceView: usage exhausted, showing wait message \(waitText)")
-            rightAttributedString.append(NSAttributedString(
+            let exhaustedStatusAttributedString = NSMutableAttributedString()
+            exhaustedStatusAttributedString.append(NSAttributedString(
                 string: "Status: ",
-                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.secondaryLabelColor]
             ))
-            rightAttributedString.append(NSAttributedString(
+            exhaustedStatusAttributedString.append(NSAttributedString(
                 string: "Used Up",
-                attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: emphasisColor]
             ))
+            exhaustedStatusTextField.attributedStringValue = exhaustedStatusAttributedString
+            exhaustedStatusTextField.isBezeled = false
+            exhaustedStatusTextField.isEditable = false
+            exhaustedStatusTextField.isSelectable = false
+            exhaustedStatusTextField.drawsBackground = false
+            exhaustedStatusTextField.lineBreakMode = .byTruncatingTail
+            exhaustedStatusTextField.maximumNumberOfLines = 1
+            exhaustedStatusTextField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            exhaustedStatusTextField.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(exhaustedStatusTextField)
+
             rightAttributedString.append(NSAttributedString(
-                string: " · Wait ",
-                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
+                string: "Wait ",
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.secondaryLabelColor]
             ))
             rightAttributedString.append(NSAttributedString(
                 string: waitText,
-                attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: emphasisColor]
             ))
             rightTextField.isHidden = false
         } else {
             debugLog("createPaceView: predict label computed: \(paceInfo.predictText)")
             rightAttributedString.append(NSAttributedString(
                 string: "Predict: ",
-                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.disabledControlTextColor]
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: NSColor.secondaryLabelColor]
             ))
             rightAttributedString.append(NSAttributedString(
                 string: paceInfo.predictText,
-                attributes: [.font: NSFont.boldSystemFont(ofSize: fontSize), .foregroundColor: paceInfo.status.color]
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize), .foregroundColor: emphasisColor]
             ))
             rightTextField.isHidden = false
         }
@@ -1267,11 +1283,24 @@ extension StatusBarController {
         rightTextField.setContentHuggingPriority(.required, for: .horizontal)
         rightTextField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(rightTextField)
-        NSLayoutConstraint.activate([
-            rightTextField.trailingAnchor.constraint(equalTo: view.leadingAnchor, constant: rightEdge),
-            rightTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            leftTextField.trailingAnchor.constraint(lessThanOrEqualTo: rightTextField.leadingAnchor, constant: -dotSpacing)
-        ])
+        if paceInfo.isExhausted {
+            rightTextField.alignment = .right
+            NSLayoutConstraint.activate([
+                exhaustedStatusTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: leadingOffset),
+                exhaustedStatusTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                exhaustedStatusTextField.trailingAnchor.constraint(lessThanOrEqualTo: rightTextField.leadingAnchor, constant: -dotSpacing),
+                rightTextField.trailingAnchor.constraint(equalTo: view.leadingAnchor, constant: rightEdge),
+                rightTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+            debugLog("createPaceView: exhausted row split layout (status left, wait right)")
+        } else {
+            rightTextField.alignment = .right
+            NSLayoutConstraint.activate([
+                rightTextField.trailingAnchor.constraint(equalTo: view.leadingAnchor, constant: rightEdge),
+                rightTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                leftTextField.trailingAnchor.constraint(lessThanOrEqualTo: rightTextField.leadingAnchor, constant: -dotSpacing)
+            ])
+        }
 
         return view
     }
@@ -1306,10 +1335,73 @@ extension StatusBarController {
         return view
     }
 
+    private func usageColorForSummary(usagePercent: Double, paceInfo: PaceInfo?) -> NSColor {
+        if let paceInfo {
+            return paceInfo.status.color
+        }
+        if usagePercent >= 100 {
+            return .systemRed
+        }
+        if usagePercent >= 80 {
+            return .systemOrange
+        }
+        return .systemGreen
+    }
+
+    func createUsageSummaryView(label: String, usagePercent: Double, valueColor: NSColor) -> NSView {
+        let menuWidth: CGFloat = MenuDesignToken.Dimension.menuWidth
+        let itemHeight: CGFloat = MenuDesignToken.Dimension.itemHeight
+        let leadingOffset: CGFloat = MenuDesignToken.Spacing.leadingOffset
+        let trailingMargin: CGFloat = MenuDesignToken.Spacing.trailingMargin
+        let minimumGap: CGFloat = MenuDesignToken.Spacing.submenuIndent
+        let headerFontSize: CGFloat = 11
+
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: itemHeight))
+
+        let leftTextField = NSTextField(labelWithString: label)
+        leftTextField.font = NSFont.systemFont(ofSize: headerFontSize, weight: .bold)
+        leftTextField.textColor = .secondaryLabelColor
+        leftTextField.lineBreakMode = .byTruncatingTail
+        leftTextField.maximumNumberOfLines = 1
+        leftTextField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        leftTextField.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(leftTextField)
+
+        let rightTextField = NSTextField(labelWithString: "")
+        let rightAttributedString = NSMutableAttributedString()
+        rightAttributedString.append(NSAttributedString(
+            string: "Used: ",
+            attributes: [.font: NSFont.boldSystemFont(ofSize: headerFontSize), .foregroundColor: NSColor.disabledControlTextColor]
+        ))
+        rightAttributedString.append(NSAttributedString(
+            string: String(format: "%.0f%%", usagePercent),
+            attributes: [.font: NSFont.boldSystemFont(ofSize: headerFontSize), .foregroundColor: valueColor]
+        ))
+        rightTextField.attributedStringValue = rightAttributedString
+        rightTextField.alignment = .right
+        rightTextField.lineBreakMode = .byTruncatingTail
+        rightTextField.maximumNumberOfLines = 1
+        rightTextField.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rightTextField.setContentHuggingPriority(.required, for: .horizontal)
+        rightTextField.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(rightTextField)
+
+        NSLayoutConstraint.activate([
+            leftTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: leadingOffset),
+            leftTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            rightTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -trailingMargin),
+            rightTextField.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            leftTextField.trailingAnchor.constraint(lessThanOrEqualTo: rightTextField.leadingAnchor, constant: -minimumGap)
+        ])
+
+        debugLog("createUsageSummaryView: \(label) -> Used \(Int(usagePercent.rounded()))%")
+        return view
+    }
+
     // MARK: - Shared UI Helpers for Unified Provider Menus
 
-    /// Creates unified usage window display with optional reset time and pace indicator.
-    /// Returns array of NSMenuItems: [usage row, reset row (optional), pace row (optional)]
+    /// Creates unified usage window display with optional pace indicator and reset time.
+    /// Returns array of NSMenuItems: [usage row, pace row (optional), reset row (optional)]
     func createUsageWindowRow(
         label: String,
         usagePercent: Double,
@@ -1319,31 +1411,50 @@ extension StatusBarController {
     ) -> [NSMenuItem] {
         var items: [NSMenuItem] = []
 
+        let paceInfoForColor: PaceInfo?
+        if let resetDate = resetDate {
+            if isMonthly {
+                paceInfoForColor = calculateMonthlyPace(usagePercent: usagePercent, resetDate: resetDate)
+            } else if let windowHours = windowHours {
+                paceInfoForColor = calculatePace(usage: usagePercent, resetTime: resetDate, windowHours: windowHours)
+            } else {
+                paceInfoForColor = nil
+            }
+        } else {
+            paceInfoForColor = nil
+        }
+
+        let usageColor = usageColorForSummary(usagePercent: usagePercent, paceInfo: paceInfoForColor)
+        debugLog("createUsageWindowRow: usage row \(label) = \(usagePercent)%")
+
         let usageItem = NSMenuItem()
-        usageItem.view = createDisabledLabelView(text: String(format: "%@: %.0f%% used", label, usagePercent))
+        usageItem.view = createUsageSummaryView(label: label, usagePercent: usagePercent, valueColor: usageColor)
         items.append(usageItem)
 
-        if let resetDate = resetDate {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
-            formatter.timeZone = TimeZone.current
-            let resetItem = NSMenuItem()
-            resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: resetDate))", indent: MenuDesignToken.Spacing.submenuIndent)
-            items.append(resetItem)
-
-            let paceInfo: PaceInfo
-            if isMonthly {
-                paceInfo = calculateMonthlyPace(usagePercent: usagePercent, resetDate: resetDate)
-            } else if let windowHours = windowHours {
-                paceInfo = calculatePace(usage: usagePercent, resetTime: resetDate, windowHours: windowHours)
-            } else {
-                return items
-            }
-
-            let paceItem = NSMenuItem()
-            paceItem.view = createPaceView(paceInfo: paceInfo)
-            items.append(paceItem)
+        guard let resetDate = resetDate else {
+            return items
         }
+
+        guard let paceInfo = paceInfoForColor else {
+            return items
+        }
+
+        let paceItem = NSMenuItem()
+        paceItem.view = createPaceView(paceInfo: paceInfo)
+        items.append(paceItem)
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+        formatter.timeZone = TimeZone.current
+        let resetItem = NSMenuItem()
+        resetItem.view = createDisabledLabelView(
+            text: "Resets: \(formatter.string(from: resetDate))",
+            indent: 0,
+            textColor: .secondaryLabelColor
+        )
+        items.append(resetItem)
+        debugLog("createUsageWindowRow: reset row tone aligned with pace text for \(label)")
+        debugLog("createUsageWindowRow: order applied for \(label) -> usage, pace, reset")
 
         return items
     }

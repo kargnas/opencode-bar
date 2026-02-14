@@ -868,14 +868,19 @@ final class StatusBarController: NSObject {
                         let formatter = DateFormatter()
                         formatter.dateFormat = "yyyy-MM-dd HH:mm"
                         formatter.timeZone = TimeZone(identifier: "UTC") ?? TimeZone(secondsFromGMT: 0)!
-                        let resetItem = NSMenuItem()
-                        resetItem.view = createDisabledLabelView(text: "Resets: \(formatter.string(from: resetDate)) UTC", indent: 18)
-                        submenu.addItem(resetItem)
-
                         let paceInfo = calculateMonthlyPace(usagePercent: usagePercent, resetDate: resetDate)
                         let paceItem = NSMenuItem()
                         paceItem.view = createPaceView(paceInfo: paceInfo)
                         submenu.addItem(paceItem)
+
+                        let resetItem = NSMenuItem()
+                        resetItem.view = createDisabledLabelView(
+                            text: "Resets: \(formatter.string(from: resetDate)) UTC",
+                            indent: 0,
+                            textColor: .secondaryLabelColor
+                        )
+                        submenu.addItem(resetItem)
+                        debugLog("updateMultiProviderMenu: reset row tone aligned with pace text for copilot fallback")
                     }
 
                     submenu.addItem(NSMenuItem.separator())
@@ -1599,7 +1604,8 @@ final class StatusBarController: NSObject {
         underline: Bool = false,
         monospaced: Bool = false,
         multiline: Bool = false,
-        indent: CGFloat = 0
+        indent: CGFloat = 0,
+        textColor: NSColor = .secondaryLabelColor
     ) -> NSView {
         var leadingOffset: CGFloat = MenuDesignToken.Spacing.leadingOffset + indent
         let menuWidth: CGFloat = MenuDesignToken.Dimension.menuWidth
@@ -1635,7 +1641,7 @@ final class StatusBarController: NSObject {
         let label = NSTextField(labelWithString: "")
 
         var attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor.secondaryLabelColor,
+            .foregroundColor: textColor,
             .font: labelFont
         ]
 
