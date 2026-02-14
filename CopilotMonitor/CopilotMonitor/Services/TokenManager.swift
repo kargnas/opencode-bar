@@ -174,6 +174,7 @@ struct OpenCodeAuth: Codable {
     let opencode: APIKey?
     let kimiForCoding: APIKey?
     let zaiCodingPlan: APIKey?
+    let nanoGpt: APIKey?
     let synthetic: APIKey?
     let chutes: APIKey?
 
@@ -182,6 +183,7 @@ struct OpenCodeAuth: Codable {
         case githubCopilot = "github-copilot"
         case kimiForCoding = "kimi-for-coding"
         case zaiCodingPlan = "zai-coding-plan"
+        case nanoGpt = "nano-gpt"
     }
 
     init(
@@ -192,6 +194,7 @@ struct OpenCodeAuth: Codable {
         opencode: APIKey?,
         kimiForCoding: APIKey?,
         zaiCodingPlan: APIKey?,
+        nanoGpt: APIKey?,
         synthetic: APIKey?,
         chutes: APIKey? = nil
     ) {
@@ -202,6 +205,7 @@ struct OpenCodeAuth: Codable {
         self.opencode = opencode
         self.kimiForCoding = kimiForCoding
         self.zaiCodingPlan = zaiCodingPlan
+        self.nanoGpt = nanoGpt
         self.synthetic = synthetic
         self.chutes = chutes
     }
@@ -215,6 +219,7 @@ struct OpenCodeAuth: Codable {
         opencode = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .opencode)
         kimiForCoding = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .kimiForCoding)
         zaiCodingPlan = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .zaiCodingPlan)
+        nanoGpt = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .nanoGpt)
         synthetic = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .synthetic)
         chutes = Self.decodeLossyIfPresent(APIKey.self, from: container, forKey: .chutes)
 
@@ -225,6 +230,7 @@ struct OpenCodeAuth: Codable {
            opencode == nil,
            kimiForCoding == nil,
            zaiCodingPlan == nil,
+           nanoGpt == nil,
            synthetic == nil,
            chutes == nil {
             throw DecodingError.dataCorrupted(
@@ -257,6 +263,7 @@ struct OpenCodeAuth: Codable {
         try container.encodeIfPresent(opencode, forKey: .opencode)
         try container.encodeIfPresent(kimiForCoding, forKey: .kimiForCoding)
         try container.encodeIfPresent(zaiCodingPlan, forKey: .zaiCodingPlan)
+        try container.encodeIfPresent(nanoGpt, forKey: .nanoGpt)
         try container.encodeIfPresent(synthetic, forKey: .synthetic)
         try container.encodeIfPresent(chutes, forKey: .chutes)
     }
@@ -2156,6 +2163,11 @@ final class TokenManager: @unchecked Sendable {
         return auth.zaiCodingPlan?.key
     }
 
+    func getNanoGptAPIKey() -> String? {
+        guard let auth = readOpenCodeAuth() else { return nil }
+        return auth.nanoGpt?.key
+    }
+
     func getSyntheticAPIKey() -> String? {
         guard let auth = readOpenCodeAuth() else { return nil }
         return auth.synthetic?.key
@@ -2727,6 +2739,7 @@ final class TokenManager: @unchecked Sendable {
             debugLines.append("  [OpenCode] \(auth.opencode != nil ? "CONFIGURED" : "NOT CONFIGURED")")
             debugLines.append("  [Kimi] \(auth.kimiForCoding != nil ? "CONFIGURED" : "NOT CONFIGURED")")
             debugLines.append("  [Z.AI Coding Plan] \(auth.zaiCodingPlan != nil ? "CONFIGURED" : "NOT CONFIGURED")")
+            debugLines.append("  [Nano-GPT] \(auth.nanoGpt != nil ? "CONFIGURED" : "NOT CONFIGURED")")
         } else {
             debugLines.append("  [auth.json] PARSE FAILED or NOT FOUND")
         }
@@ -3026,6 +3039,14 @@ final class TokenManager: @unchecked Sendable {
                 debugLines.append("  - Key Preview: \(maskToken(zaiCodingPlan.key))")
             } else {
                 debugLines.append("[Z.AI Coding Plan] NOT CONFIGURED")
+            }
+
+            if let nanoGpt = auth.nanoGpt {
+                debugLines.append("[Nano-GPT] API Key Present")
+                debugLines.append("  - Key Length: \(nanoGpt.key.count) chars")
+                debugLines.append("  - Key Preview: \(maskToken(nanoGpt.key))")
+            } else {
+                debugLines.append("[Nano-GPT] NOT CONFIGURED")
             }
         } else {
             debugLines.append("[auth.json] PARSE FAILED or NOT FOUND")

@@ -6,7 +6,7 @@
 
 | Provider | Token File |
 |----------|-----------|
-| Claude, Codex, Copilot | `~/.local/share/opencode/auth.json` |
+| Claude, Codex, Copilot, Nano-GPT | `~/.local/share/opencode/auth.json` |
 | Antigravity (Gemini) | `~/.config/opencode/antigravity-accounts.json` |
 
 ---
@@ -145,7 +145,54 @@ curl -s "https://api.github.com/copilot_internal/user" \
 
 ---
 
-## 4. Antigravity (Dual Quota System)
+## 4. Nano-GPT
+
+**Endpoints:**
+- `GET https://nano-gpt.com/api/subscription/v1/usage`
+- `POST https://nano-gpt.com/api/check-balance`
+
+```bash
+API_KEY=$(jq -r '."nano-gpt".key' ~/.local/share/opencode/auth.json)
+
+curl -s "https://nano-gpt.com/api/subscription/v1/usage" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "x-api-key: $API_KEY"
+
+curl -s -X POST "https://nano-gpt.com/api/check-balance" \
+  -H "x-api-key: $API_KEY"
+```
+
+**Response (usage):**
+```json
+{
+  "active": true,
+  "limits": { "daily": 5000, "monthly": 60000 },
+  "daily": { "used": 5, "remaining": 4995, "percentUsed": 0.001, "resetAt": 1738540800000 },
+  "monthly": { "used": 45, "remaining": 59955, "percentUsed": 0.00075, "resetAt": 1739404800000 },
+  "period": { "currentPeriodEnd": "2025-02-13T23:59:59.000Z" }
+}
+```
+
+**Response (balance):**
+```json
+{
+  "usd_balance": "129.46956147",
+  "nano_balance": "26.71801147"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `limits.daily`, `limits.monthly` | Daily/monthly allowance |
+| `daily.percentUsed`, `monthly.percentUsed` | Fraction (0..1) of limit used |
+| `daily.resetAt`, `monthly.resetAt` | Reset time in epoch milliseconds |
+| `period.currentPeriodEnd` | End of current billing period (ISO 8601) |
+| `usd_balance` | USD balance string |
+| `nano_balance` | NANO balance string |
+
+---
+
+## 5. Antigravity (Dual Quota System)
 
 Antigravity has **two independent quota systems**:
 

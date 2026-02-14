@@ -927,6 +927,7 @@ final class StatusBarController: NSObject {
             .kimi,
             .codex,
             .zaiCodingPlan,
+            .nanoGpt,
             .antigravity,
             .chutes,
             .synthetic
@@ -1040,6 +1041,9 @@ final class StatusBarController: NSObject {
                         } else if identifier == .zaiCodingPlan {
                             let percents = [account.details?.tokenUsagePercent, account.details?.mcpUsagePercent].compactMap { $0 }
                             usedPercents = percents.isEmpty ? [account.usage.usagePercentage] : percents
+                        } else if identifier == .nanoGpt {
+                            let percents = [account.details?.tokenUsagePercent, account.details?.mcpUsagePercent].compactMap { $0 }
+                            usedPercents = percents.isEmpty ? [account.usage.usagePercentage] : percents
                         } else {
                             usedPercents = [account.usage.usagePercentage]
                         }
@@ -1088,6 +1092,9 @@ final class StatusBarController: NSObject {
                         }
                         usedPercents = percents
                     } else if identifier == .zaiCodingPlan {
+                        let percents = [result.details?.tokenUsagePercent, result.details?.mcpUsagePercent].compactMap { $0 }
+                        usedPercents = percents.isEmpty ? [singlePercent] : percents
+                    } else if identifier == .nanoGpt {
                         let percents = [result.details?.tokenUsagePercent, result.details?.mcpUsagePercent].compactMap { $0 }
                         usedPercents = percents.isEmpty ? [singlePercent] : percents
                     } else {
@@ -1486,6 +1493,8 @@ final class StatusBarController: NSObject {
             image = NSImage(systemSymbolName: identifier.iconName, accessibilityDescription: identifier.displayName)
         case .zaiCodingPlan:
             image = NSImage(named: "ZaiIcon")
+        case .nanoGpt:
+            image = NSImage(named: "NanoGptIcon")
         case .synthetic:
             image = NSImage(named: "SyntheticIcon")
         case .chutes:

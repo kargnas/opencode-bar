@@ -96,6 +96,7 @@ struct SwiftUIProviderAlertView: View {
         case .antigravity: return "arrow.up.circle"
         case .kimi: return "k.circle"
         case .zaiCodingPlan: return "globe"
+        case .nanoGpt: return "n.circle"
         case .synthetic: return "diamond"
         case .chutes: return "c.circle"
         }

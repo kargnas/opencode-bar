@@ -151,6 +151,10 @@ struct ProviderSubscriptionPresets {
         SubscriptionPreset(name: "Pro", cost: 60)
     ]
 
+    static let nanoGpt: [SubscriptionPreset] = [
+        SubscriptionPreset(name: "Subscription", cost: 8)
+    ]
+
     static let openRouter: [SubscriptionPreset] = []
     static let openCode: [SubscriptionPreset] = []
     static let openCodeZen: [SubscriptionPreset] = []
@@ -177,6 +181,8 @@ struct ProviderSubscriptionPresets {
             return openCodeZen
         case .zaiCodingPlan:
             return zaiCodingPlan
+        case .nanoGpt:
+            return nanoGpt
         case .synthetic:
             return synthetic
         case .chutes:

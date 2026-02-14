@@ -14,6 +14,7 @@ final class CLIFormatterTests: XCTestCase {
         XCTAssertEqual(ProviderIdentifier.kimi.rawValue, "kimi")
         XCTAssertEqual(ProviderIdentifier.antigravity.rawValue, "antigravity")
         XCTAssertEqual(ProviderIdentifier.copilot.rawValue, "copilot")
+        XCTAssertEqual(ProviderIdentifier.nanoGpt.rawValue, "nano_gpt")
     }
     
     func testProviderIdentifierDisplayNames() {
@@ -22,6 +23,7 @@ final class CLIFormatterTests: XCTestCase {
         XCTAssertEqual(ProviderIdentifier.geminiCLI.displayName, "Gemini CLI")
         XCTAssertEqual(ProviderIdentifier.claude.displayName, "Claude")
         XCTAssertEqual(ProviderIdentifier.kimi.displayName, "Kimi for Coding")
+        XCTAssertEqual(ProviderIdentifier.nanoGpt.displayName, "Nano-GPT")
     }
     
     // MARK: - ProviderUsage Tests

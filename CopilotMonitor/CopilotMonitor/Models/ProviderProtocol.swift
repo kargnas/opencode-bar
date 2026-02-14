@@ -20,6 +20,7 @@ enum ProviderIdentifier: String, CaseIterable {
     case openCodeZen = "opencode_zen"
     case kimi
     case zaiCodingPlan = "zai_coding_plan"
+    case nanoGpt = "nano_gpt"
     case synthetic
     case chutes
 
@@ -45,6 +46,8 @@ enum ProviderIdentifier: String, CaseIterable {
             return "Kimi for Coding"
         case .zaiCodingPlan:
             return "Z.AI Coding Plan"
+        case .nanoGpt:
+            return "Nano-GPT"
         case .synthetic:
             return "Synthetic"
         case .chutes:
@@ -74,6 +77,8 @@ enum ProviderIdentifier: String, CaseIterable {
             return "k.circle"
         case .zaiCodingPlan:
             return "globe"
+        case .nanoGpt:
+            return "NanoGptIcon"
         case .synthetic:
             return "SyntheticIcon"
         case .chutes:

@@ -15,6 +15,7 @@ actor CLIProviderManager {
     static let registeredProviders: [ProviderIdentifier] = [
         .claude, .codex, .geminiCLI, .openRouter,
         .antigravity, .openCodeZen, .kimi, .zaiCodingPlan,
+        .nanoGpt,
         .chutes, .copilot,
         .synthetic
     ]
@@ -22,8 +23,8 @@ actor CLIProviderManager {
     // MARK: - Initialization
     
     init() {
-        // Initialize all 11 providers
-        // 10 shared providers (no UI dependencies)
+        // Initialize all providers
+        // Shared providers (no UI dependencies)
         let claudeProvider = ClaudeProvider()
         let codexProvider = CodexProvider()
         let geminiCLIProvider = GeminiCLIProvider()
@@ -32,6 +33,7 @@ actor CLIProviderManager {
         let openCodeZenProvider = OpenCodeZenProvider()
         let kimiProvider = KimiProvider()
         let zaiCodingPlanProvider = ZaiCodingPlanProvider()
+        let nanoGptProvider = NanoGptProvider()
         let chutesProvider = ChutesProvider()
         let syntheticProvider = SyntheticProvider()
 
@@ -47,6 +49,7 @@ actor CLIProviderManager {
             openCodeZenProvider,
             kimiProvider,
             zaiCodingPlanProvider,
+            nanoGptProvider,
             chutesProvider,
             copilotCLIProvider,
             syntheticProvider
